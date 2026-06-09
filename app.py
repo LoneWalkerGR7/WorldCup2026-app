@@ -253,24 +253,28 @@ with t1:
                     st.rerun()
 
 with t2:
-    GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
-    cols_s = st.columns(3)
-    for i, gId in enumerate(GROUPS_L):
-        with cols_s[i % 3]:
-            st.markdown(f"#### Group {gId}")
-            g_teams = list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId]))
+    cols_std = st.columns(3)
+    for i, gId in enumerate(GROUPS):
+        with cols_std[i % 3]:
+            st.markdown(f"### Group {gId}")
+            g_teams = [t['n'] for t in TEAMS if t['g'] == gId]
             res = []
             for t in g_teams:
-                pts, gd = 0, 0
+                pts, gd, y, r, p, og = 0, 0, 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
                     if m['fin'] and (m['h'] == t or m['a'] == t):
                         is_h = m['h'] == t
                         h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+                        y += m['y_h'] if is_h else m['y_a']
+                        r += m['r_h'] if is_h else m['r_a']
+                        p += m['p_h'] if is_h else m['p_a']
+                        og += m['og_h'] if is_h else m['og_a']
                         gd += (h_s - a_s)
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
-                res.append({"Team": t, "Pts": pts, "GD": gd})
-            st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
+                res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
+            df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
+            st.table(df)
 
 # Προσθήκη αυτής της συνάρτησης ΠΡΙΝ το tab3 για να έχει μνήμη η AI
 @st.cache_data(ttl=3600) # Κρατάει την πρόβλεψη στη μνήμη για 1 ώρα
