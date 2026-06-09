@@ -3,158 +3,182 @@ import pandas as pd
 import random
 import google.generativeai as genai
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# --- 1. CONFIG & CSS (COSMIC SLATE) ---
-st.set_page_config(page_title="Mundial 2026 Official Portal", layout="wide", page_icon="🏆")
+# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT) ---
+st.set_page_config(page_title="World Cup 2026 Pro Portal", layout="wide", page_icon="🏆")
 
 st.markdown("""
     <style>
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-    h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown { color: white !important; }
+    
+    /* Λευκά γράμματα σε όλα τα στοιχεία */
+    h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stExpander"] p { color: white !important; }
     
     .stat-card {
         background: #0f172a;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 20px;
+        padding: 15px;
         text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    .stat-val { font-size: 24px; font-weight: 800; color: #06b6d4 !important; }
-    
+    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 10px; color: #94a3b8 !important; text-transform: uppercase; }
+
     .match-card {
         background: #0f172a;
         border: 1px solid #1e293b;
         border-radius: 16px;
-        padding: 15px;
+        padding: 12px;
         margin-bottom: 10px;
     }
-    .st-venue { font-size: 10px; color: #94a3b8 !important; margin-top: 5px; font-style: italic; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
+    /* Reset Button: Black text */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: white !important;
         font-weight: bold !important;
+        border: none !important;
     }
+    
+    /* Tables */
+    .stTable td, .stTable th { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
-INITIAL_TEAMS = [
-    {"id": "mex", "name": "Μεξικό", "flag": "🇲🇽", "group": "A"}, {"id": "rsa", "name": "Νότια Αφρική", "flag": "🇿🇦", "group": "A"}, {"id": "kor", "name": "Νότια Κορέα", "flag": "🇰🇷", "group": "A"}, {"id": "cze", "name": "Τσεχία", "flag": "🇨🇿", "group": "A"},
-    {"id": "can", "name": "Καναδάς", "flag": "🇨🇦", "group": "B"}, {"id": "bih", "name": "Βοσνία", "flag": "🇧🇦", "group": "B"}, {"id": "qat", "name": "Κατάρ", "flag": "🇶🇦", "group": "B"}, {"id": "sui", "name": "Ελβετία", "flag": "🇨🇭", "group": "B"},
-    {"id": "bra", "name": "Βραζιλία", "flag": "🇧🇷", "group": "C"}, {"id": "mar", "name": "Μαρόκο", "flag": "🇲🇦", "group": "C"}, {"id": "hai", "name": "Αϊτή", "flag": "🇭🇹", "group": "C"}, {"id": "sco", "name": "Σκωτία", "flag": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "group": "C"},
-    {"id": "usa", "name": "ΗΠΑ", "flag": "🇺🇸", "group": "D"}, {"id": "par", "name": "Παραγουάη", "flag": "🇵🇾", "group": "D"}, {"id": "aus", "name": "Αυστραλία", "flag": "🇦🇺", "group": "D"}, {"id": "tur", "name": "Τουρκία", "flag": "🇹🇷", "group": "D"},
-    {"id": "ger", "name": "Γερμανία", "flag": "🇩🇪", "group": "E"}, {"id": "cur", "name": "Κουρασάο", "flag": "🇨🇼", "group": "E"}, {"id": "civ", "name": "Ακτή Ελεφαντοστού", "flag": "🇨🇮", "group": "E"}, {"id": "ecu", "name": "Εκουαδόρ", "flag": "🇪🇨", "group": "E"},
-    {"id": "ned", "name": "Ολλανδία", "flag": "🇳🇱", "group": "F"}, {"id": "jpn", "name": "Ιαπωνία", "flag": "🇯🇵", "group": "F"}, {"id": "swe", "name": "Σουηδία", "flag": "🇸🇪", "group": "F"}, {"id": "tun", "name": "Τυνησία", "flag": "🇹🇳", "group": "F"},
-    {"id": "bel", "name": "Βέλγιο", "flag": "🇧🇪", "group": "G"}, {"id": "egy", "name": "Αίγυπτος", "flag": "🇪🇬", "group": "G"}, {"id": "irn", "name": "Ιράν", "flag": "🇮🇷", "group": "G"}, {"id": "nzl", "name": "Νέα Ζηλανδία", "flag": "🇳🇿", "group": "G"},
-    {"id": "esp", "name": "Ισπανία", "flag": "🇪🇸", "group": "H"}, {"id": "cpv", "name": "Πράσινο Ακρωτήρι", "flag": "🇨🇻", "group": "H"}, {"id": "ksa", "name": "Σαουδική Αραβία", "flag": "🇸🇦", "group": "H"}, {"id": "ury", "name": "Ουρουγουάη", "flag": "🇺🇾", "group": "H"},
-    {"id": "fra", "name": "Γαλλία", "flag": "🇫🇷", "group": "I"}, {"id": "sen", "name": "Σενεγάλη", "flag": "🇸🇳", "group": "I"}, {"id": "irq", "name": "Ιράκ", "flag": "🇮🇶", "group": "I"}, {"id": "nor", "name": "Νορβηγία", "flag": "🇳🇴", "group": "I"},
-    {"id": "arg", "name": "Αργεντινή", "flag": "🇦🇷", "group": "J"}, {"id": "alg", "name": "Αλγερία", "flag": "🇩🇿", "group": "J"}, {"id": "aut", "name": "Αυστρία", "flag": "🇦🇹", "group": "J"}, {"id": "jor", "name": "Ιορδανία", "flag": "🇯🇴", "group": "J"},
-    {"id": "por", "name": "Πορτογαλία", "flag": "🇵🇹", "group": "K"}, {"id": "cog", "name": "Κονγκό", "flag": "🇨🇬", "group": "K"}, {"id": "uzb", "name": "Ουζμπεκιστάν", "flag": "🇺🇿", "group": "K"}, {"id": "col", "name": "Κολομβία", "flag": "🇨🇴", "group": "K"},
-    {"id": "eng", "name": "Αγγλία", "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "group": "L"}, {"id": "cro", "name": "Κροατία", "flag": "🇭🇷", "group": "L"}, {"id": "gha", "name": "Γκάνα", "flag": "🇬🇭", "group": "L"}, {"id": "pan", "name": "Παναμάς", "flag": "🇵🇦", "group": "L"}
+# --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ & ΣΤΑΔΙΩΝ ---
+STADIUMS = [
+    "Estadio Azteca (Mexico City)", "Estadio Akron (Guadalajara)", "BMO Field (Toronto)",
+    "SoFi Stadium (Inglewood)", "BC Place (Vancouver)", "Levi's Stadium (Santa Clara)",
+    "MetLife Stadium (East Rutherford)", "Gillette Stadium (Foxborough)", "NRG Stadium (Houston)",
+    "AT&T Stadium (Arlington)", "Lincoln Financial Field (Philadelphia)", "Estadio BBVA (Monterrey)"
 ]
 
-# --- 3. ΑΥΘΕΝΤΙΚΟ ΠΡΟΓΡΑΜΜΑ (ΑΠΟ ΕΙΚΟΝΑ) ---
-RAW_MATCHES = [
-    {"id": 1, "group": "A", "date": "11/06 22:00", "stadium": "Estadio Azteca (Mexico City)", "h": "Μεξικό", "a": "Νότια Αφρική"},
-    {"id": 2, "group": "A", "date": "12/06 05:00", "stadium": "Estadio Akron (Guadalajara)", "h": "Νότια Κορέα", "a": "Τσεχία"},
-    {"id": 3, "group": "B", "date": "12/06 22:00", "stadium": "BMO Field (Toronto)", "h": "Καναδάς", "a": "Βοσνία"},
-    {"id": 4, "group": "D", "date": "13/06 04:00", "stadium": "SoFi Stadium (Inglewood)", "h": "ΗΠΑ", "a": "Παραγουάη"},
-    {"id": 5, "group": "D", "date": "14/06 07:00", "stadium": "BC Place (Vancouver)", "h": "Αυστραλία", "a": "Τουρκία"},
-    {"id": 6, "group": "B", "date": "13/06 22:00", "stadium": "Levi's Stadium (Santa Clara)", "h": "Κατάρ", "a": "Ελβετία"},
-    {"id": 7, "group": "C", "date": "14/06 01:00", "stadium": "MetLife Stadium (East Rutherford)", "h": "Βραζιλία", "a": "Μαρόκο"},
-    {"id": 8, "group": "C", "date": "14/06 04:00", "stadium": "Gillette Stadium (Foxborough)", "h": "Αϊτή", "a": "Σκωτία"},
-    {"id": 9, "group": "E", "date": "14/06 20:00", "stadium": "NRG Stadium (Houston)", "h": "Γερμανία", "a": "Κουρασάο"},
-    {"id": 10, "group": "F", "date": "14/06 23:00", "stadium": "AT&T Stadium (Arlington)", "h": "Ολλανδία", "a": "Ιαπωνία"},
-    # Προσθέστε περισσότερα εδώ αν χρειαστεί, για τώρα καλύπτουμε τη βάση.
+TEAMS = [
+    # Group A-L as per your list
+    {"n": "Μεξικό", "g": "A"}, {"n": "Νότια Αφρική", "g": "A"}, {"n": "Νότια Κορέα", "g": "A"}, {"n": "Τσεχία", "g": "A"},
+    {"n": "Καναδάς", "g": "B"}, {"n": "Βοσνία", "g": "B"}, {"n": "Κατάρ", "g": "B"}, {"n": "Ελβετία", "g": "B"},
+    {"n": "Βραζιλία", "g": "C"}, {"n": "Μαρόκο", "g": "C"}, {"n": "Αϊτή", "g": "C"}, {"n": "Σκωτία", "g": "C"},
+    {"n": "ΗΠΑ", "g": "D"}, {"n": "Παραγουάη", "g": "D"}, {"n": "Αυστραλία", "g": "D"}, {"n": "Τουρκία", "g": "D"},
+    {"n": "Γερμανία", "g": "E"}, {"n": "Κουρασάο", "g": "E"}, {"n": "Ακτή Ελεφαντοστού", "g": "E"}, {"n": "Εκουαδόρ", "g": "E"},
+    {"n": "Ολλανδία", "g": "F"}, {"n": "Ιαπωνία", "g": "F"}, {"n": "Σουηδία", "g": "F"}, {"n": "Τυνησία", "g": "F"},
+    {"n": "Βέλγιο", "g": "G"}, {"n": "Αίγυπτος", "g": "G"}, {"n": "Ιράν", "g": "G"}, {"n": "Νέα Ζηλανδία", "g": "G"},
+    {"n": "Ισπανία", "g": "H"}, {"n": "Πράσινο Ακρωτήρι", "g": "H"}, {"n": "Σαουδική Αραβία", "g": "H"}, {"n": "Ουρουγουάη", "g": "H"},
+    {"n": "Γαλλία", "g": "I"}, {"n": "Σενεγάλη", "g": "I"}, {"n": "Ιράκ", "g": "I"}, {"n": "Νορβηγία", "g": "I"},
+    {"n": "Αργεντινή", "g": "J"}, {"n": "Αλγερία", "g": "J"}, {"n": "Αυστρία", "g": "J"}, {"n": "Ιορδανία", "g": "J"},
+    {"n": "Πορτογαλία", "g": "K"}, {"n": "Κονγκό", "g": "K"}, {"n": "Ουζμπεκιστάν", "g": "K"}, {"n": "Κολομβία", "g": "K"},
+    {"n": "Αγγλία", "g": "L"}, {"n": "Κροατία", "g": "L"}, {"n": "Γκάνα", "g": "L"}, {"n": "Παναμάς", "g": "L"}
 ]
 
-# --- 4. SESSION STATE ---
+GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+
+# --- 3. SESSION STATE (72 MATCHES GENERATOR) ---
 if 'wc_matches' not in st.session_state:
     matches = []
-    # Χρησιμοποιούμε τα δεδομένα της εικόνας
-    for rm in RAW_MATCHES:
-        h_team = next(t for t in INITIAL_TEAMS if t['name'] == rm['h'])
-        a_team = next(t for t in INITIAL_TEAMS if t['name'] == rm['a'])
-        matches.append({
-            "id": rm['id'], "group": rm['group'], "date": rm['date'], 
-            "stadium": rm['stadium'], "home": h_team, "away": a_team,
-            "score_h": None, "score_a": None, "finished": False,
-            "yellow": 0, "red": 0, "pens": 0, "og": 0
-        })
+    start_date = datetime(2026, 6, 11, 22, 0)
+    match_id = 1
+    
+    for g_idx, gId in enumerate(GROUPS):
+        g_teams = [t for t in TEAMS if t['g'] == gId]
+        pairs = [(0,1), (2,3), (0,2), (1,3), (0,3), (1,2)] # Round Robin
+        for p_idx, (h, a) in enumerate(pairs):
+            # Ρεαλιστική κατανομή ημερομηνιών
+            day_off = g_idx + (p_idx * 3)
+            time_m = start_date + timedelta(days=day_off, hours=(match_id % 4)*3)
+            matches.append({
+                "id": match_id, "group": gId, "h": g_teams[h]['n'], "a": g_teams[a]['n'],
+                "sh": None, "sa": None, "fin": False,
+                "y": 0, "r": 0, "p": 0, "og": 0,
+                "dt": time_m.strftime("%d/%m %H:%M"),
+                "st": STADIUMS[match_id % len(STADIUMS)]
+            })
+            match_id += 1
     st.session_state.wc_matches = matches
 
-# --- 5. FUNCTIONS ---
-def auto_simulate():
+# --- 4. ΛΕΙΤΟΥΡΓΙΕΣ ---
+def auto_play():
     for m in st.session_state.wc_matches:
-        if not m['finished']:
-            m['score_h'], m['score_a'] = random.randint(0, 4), random.randint(0, 4)
-            m['yellow'], m['red'] = random.randint(0, 5), (1 if random.random() > 0.9 else 0)
-            m['finished'] = True
+        if not m['fin']:
+            m['sh'], m['sa'] = random.randint(0, 4), random.randint(0, 4)
+            m['y'], m['r'] = random.randint(1, 6), (1 if random.random() > 0.9 else 0)
+            m['p'], m['og'] = (1 if random.random() > 0.85 else 0), (1 if random.random() > 0.96 else 0)
+            m['fin'] = True
     st.rerun()
 
 def reset():
     if 'wc_matches' in st.session_state: del st.session_state['wc_matches']
     st.rerun()
 
-# --- 6. UI ---
-st.title("🏆 MUNDIAL 2026 OFFICIAL PORTAL")
+# --- 5. DASHBOARD ---
+st.markdown("<h1>🏆 MUNDIAL 2026 PRO DASHBOARD</h1>", unsafe_allow_html=True)
 
-finished = [m for m in st.session_state.wc_matches if m['finished']]
-c1, c2, c3, c4 = st.columns(4)
-with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(finished)}/{len(st.session_state.wc_matches)}</div><div class="stat-label">Matches Played</div></div>', unsafe_allow_html=True)
-with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["score_h"]+m["score_a"] for m in finished)}</div><div class="stat-label">Total Goals</div></div>', unsafe_allow_html=True)
-with c3: st.button("⚡ AUTO-PLAY SIMULATOR", on_click=auto_simulate, type="primary")
-with c4: st.button("🔄 RESET ALL", on_click=reset, type="secondary")
+fin = [m for m in st.session_state.wc_matches if m['fin']]
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
+with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["sh"]+m["sa"] for m in fin)}</div><div class="stat-label">Goals</div></div>', unsafe_allow_html=True)
+with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{sum(m["y"] for m in fin)}</div><div class="stat-label">Yellow</div></div>', unsafe_allow_html=True)
+with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{sum(m["r"] for m in fin)}</div><div class="stat-label">Red</div></div>', unsafe_allow_html=True)
+with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{sum(m["p"] for m in fin)}</div><div class="stat-label">Pens</div></div>', unsafe_allow_html=True)
+with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{sum(m["og"] for m in fin)}</div><div class="stat-label">Own Goals</div></div>', unsafe_allow_html=True)
 
-t1, t2, t3 = st.tabs(["📅 ΠΡΟΓΡΑΜΜΑ ΑΓΩΝΩΝ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "🔮 AI ΠΡΟΒΛΕΨΕΙΣ"])
+st.write("")
+b1, b2 = st.columns([2, 1])
+with b1: st.button("⚡ AUTO-PLAY TOURNAMENT SIMULATOR", on_click=auto_play, type="primary")
+with b2: st.button("🔄 RESET ALL", on_click=reset, type="secondary")
+
+# --- 6. TABS ---
+t1, t2, t3 = st.tabs(["📅 CALENDAR & STATS", "📊 STANDINGS", "🔮 AI PREDICTIONS"])
 
 with t1:
+    g_sel = st.selectbox("Φίλτρο Ομίλου:", ["Όλοι"] + GROUPS)
+    display = [m for m in st.session_state.wc_matches if g_sel == "Όλοι" or m['group'] == g_sel]
     cols = st.columns(3)
-    for idx, m in enumerate(st.session_state.wc_matches):
+    for idx, m in enumerate(display):
         with cols[idx % 3]:
             st.markdown(f"""
             <div class="match-card">
-                <div style="display:flex; justify-content: space-between;">
+                <div style="display:flex; justify-content: space-between; margin-bottom:5px;">
                     <span class="group-tag">GROUP {m['group']}</span>
-                    <span style="font-size:11px; color:#94a3b8;">🕒 {m['date']}</span>
+                    <span style="font-size:10px; color:#94a3b8;">🕒 {m['dt']}</span>
                 </div>
-                <div style="display:flex; justify-content: space-around; align-items:center; padding:12px 0;">
-                    <div style="text-align:center; width:40%; font-weight:bold; font-size:14px;">{m['home']['name']}</div>
-                    <div style="font-size:22px; color:#06b6d4; font-weight:800;">{m['score_h'] if m['score_h'] is not None else '-'} : {m['score_a'] if m['score_a'] is not None else '-'}</div>
-                    <div style="text-align:center; width:40%; font-weight:bold; font-size:14px;">{m['away']['name']}</div>
+                <div style="display:flex; justify-content: space-around; align-items:center; padding:10px 0;">
+                    <div style="width:40%; text-align:center; font-weight:bold;">{m['h']}</div>
+                    <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold;">{m['a']}</div>
                 </div>
-                <div class="st-venue">📍 {m['stadium']}</div>
+                <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
+                    🟨 {m['y']} | 🟥 {m['r']} | 🎯 {m['p']} | ⚠️ {m['og']} | 📍 {m['st']}
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            with st.expander("✏️ Εισαγωγή Σκορ"):
-                h = st.number_input(f"Goals {m['home']['name']}", 0, 15, key=f"h{m['id']}")
-                a = st.number_input(f"Goals {m['away']['name']}", 0, 15, key=f"a{m['id']}")
-                if st.button("Update", key=f"b{m['id']}"):
-                    m.update({"score_h": h, "score_a": a, "finished": True}); st.rerun()
+            with st.expander("✏️ Επεξεργασία"):
+                h_i = st.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"h{m['id']}")
+                a_i = st.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"a{m['id']}")
+                y_i = st.slider("Κίτρινες", 0, 10, m['y'], key=f"y{m['id']}")
+                r_i = st.checkbox("Κόκκινη", value=bool(m['r']), key=f"r{m['id']}")
+                if st.button("Save", key=f"s{m['id']}"):
+                    m.update({"sh": h_i, "sa": a_i, "y": y_i, "r": int(r_i), "fin": True}); st.rerun()
 
 with t2:
-    # ( Standings logic remains same, but filtered by the explicit 12 groups )
-    GROUPS_LIST = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
     cols = st.columns(3)
-    for i, gId in enumerate(GROUPS_LIST):
+    for i, gId in enumerate(GROUPS):
         with cols[i % 3]:
-            st.markdown(f"### Group {gId}")
-            teams = [t for t in INITIAL_TEAMS if t['group'] == gId]
+            st.markdown(f"#### Group {gId}")
+            g_teams = [t['n'] for t in TEAMS if t['g'] == gId]
             res = []
-            for t in teams:
+            for t in g_teams:
                 pts, gd = 0, 0
                 for m in st.session_state.wc_matches:
-                    if m['finished'] and (m['home']['id'] == t['id'] or m['away']['id'] == t['id']):
-                        is_h = m['home']['id'] == t['id']
-                        h, a = (m['score_h'], m['score_a']) if is_h else (m['score_a'], m['score_h'])
+                    if m['fin'] and (m['h'] == t or m['a'] == t):
+                        is_h = m['h'] == t
+                        h, a = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
                         gd += (h - a)
                         if h > a: pts += 3
                         elif h == a: pts += 1
-                res.append({"Team": f"{t['flag']} {t['name']}", "Pts": pts, "GD": gd})
+                res.append({"Team": t, "Pts": pts, "GD": gd})
             st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
 with t3:
@@ -163,14 +187,16 @@ with t3:
     if api_key:
         genai.configure(api_key=api_key)
         try:
-            available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            model_id = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available else 'models/gemini-pro'
-            model = genai.GenerativeModel(model_id)
-            t_names = sorted([t['name'] for t in INITIAL_TEAMS])
+            # Αποφυγή 404 με δυναμική επιλογή μοντέλου
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            m_id = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in models else 'models/gemini-pro'
+            model = genai.GenerativeModel(m_id)
+            
+            t_names = sorted([t['n'] for t in TEAMS])
             c1, c2 = st.columns(2)
             h_t, a_t = c1.selectbox("Home", t_names), c2.selectbox("Away", t_names, index=1)
-            if st.button("GENERATE PREDICTION"):
-                with st.spinner("Analyzing data..."):
-                    resp = model.generate_content(f"Predict score for {h_t} vs {a_t} in World Cup 2026. Explain tactics in Greek.")
+            if st.button("GENERATE PRO PREDICTION"):
+                with st.spinner("AI is analyzing tactics..."):
+                    resp = model.generate_content(f"Predict World Cup 2026 score: {h_t} vs {a_t}. Analyze in Greek.")
                     st.info(resp.text)
         except Exception as e: st.error(f"Error: {e}")
