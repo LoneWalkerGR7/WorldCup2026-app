@@ -4,13 +4,19 @@ import random
 import google.generativeai as genai
 import os
 
-# --- 1. CONFIG & CSS (COSMIC THEME) ---
+# --- 1. CONFIG & CSS (ΠΛΗΡΗΣ ΔΙΟΡΘΩΣΗ ΧΡΩΜΑΤΩΝ) ---
 st.set_page_config(page_title="World Cup 2026 Pro", layout="wide", page_icon="🏆")
 
 st.markdown("""
     <style>
+    /* Φόντο Εφαρμογής */
     .stApp { background-color: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
+    
+    /* Τίτλοι Ομίλων (Λευκά Γράμματα) */
+    h1, h2, h3, h4, h5, h6 { color: white !important; font-weight: 700 !important; }
+    
+    /* Dashboard Stats Cards */
     .stat-card {
         background: #0f172a;
         border: 1px solid #1e293b;
@@ -21,6 +27,8 @@ st.markdown("""
     }
     .stat-val { font-size: 24px; font-weight: 800; color: #06b6d4; font-family: 'Monaco', monospace; }
     .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+
+    /* Match Box Design */
     .match-card {
         background: #0f172a;
         border: 1px solid #1e293b;
@@ -29,8 +37,26 @@ st.markdown("""
         margin-bottom: 15px;
     }
     .group-tag { font-size: 10px; background: rgba(6, 182, 212, 0.1); color: #22d3ee; padding: 2px 8px; border-radius: 99px; font-weight: bold; }
-    .stButton>button { width: 100%; border-radius: 10px; font-weight: bold; text-transform: uppercase; }
-    .stTable { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; }
+    
+    /* Πίνακες Βαθμολογίας (Λευκά Γράμματα και καθαρότητα) */
+    .stTable, table { color: white !important; width: 100%; }
+    thead tr th { color: #06b6d4 !important; background-color: #1e293b !important; }
+    tbody tr td { color: white !important; background-color: #0f172a !important; border-bottom: 1px solid #1e293b !important; }
+
+    /* Κουμπί Reset All (Μαύρα Γράμματα) */
+    div.stButton > button[kind="secondary"] {
+        color: black !important;
+        background-color: #f1f5f9 !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+    
+    /* Κουμπί Auto-Play */
+    div.stButton > button[kind="primary"] {
+        color: white !important;
+        background-color: #ef4444 !important;
+        border: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -52,7 +78,7 @@ INITIAL_TEAMS = [
 
 GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
-# --- 3. SESSION STATE (DATABASE) ---
+# --- 3. SESSION STATE ---
 if 'wc_matches' not in st.session_state:
     matches = []
     for gId in GROUPS:
@@ -66,14 +92,14 @@ if 'wc_matches' not in st.session_state:
             })
     st.session_state.wc_matches = matches
 
-# --- 4. ΛΕΙΤΟΥΡΓΙΕΣ ---
+# --- 4. FUNCTIONS ---
 def auto_simulate():
     for m in st.session_state.wc_matches:
         if not m['finished']:
             m['score_h'], m['score_a'] = random.randint(0, 4), random.randint(0, 4)
             m['yellow'] = random.randint(1, 6)
             m['red'] = 1 if random.random() > 0.9 else 0
-            m['pens'] = 1 if random.random() > 0.85 else 0
+            m['pens'] = random.randint(0, 1) if random.random() > 0.8 else 0
             m['og'] = 1 if random.random() > 0.95 else 0
             m['finished'] = True
     st.rerun()
@@ -83,7 +109,7 @@ def reset_all():
     st.rerun()
 
 # --- 5. HEADER & DASHBOARD ---
-st.title("🏆 MUNDIAL 2026 PRO DASHBOARD")
+st.markdown("<h1>🏆 MUNDIAL 2026 PRO DASHBOARD</h1>", unsafe_allow_html=True)
 
 finished = [m for m in st.session_state.wc_matches if m['finished']]
 total_goals = sum(m['score_h'] + m['score_a'] for m in finished)
@@ -103,7 +129,7 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ AUTO-PLAY TOURNAMENT SIMULATOR", on_click=auto_simulate, type="primary")
-with b2: st.button("🔄 RESET ALL", on_click=reset_all)
+with b2: st.button("🔄 RESET ALL", on_click=reset_all, kind="secondary")
 
 # --- 6. TABS ---
 tab1, tab2, tab3 = st.tabs(["📅 CALENDAR & LIVE STATS", "📊 GROUP STANDINGS", "🧠 AI PREDICTIONS"])
@@ -121,9 +147,9 @@ with tab1:
                     <span style="color: #10b981; font-weight: bold; font-size: 10px;">{'FINISHED' if m['finished'] else ''}</span>
                 </div>
                 <div style="display:flex; justify-content: space-around; align-items:center;">
-                    <div style="width:40%; text-align:center; font-weight:bold;">{m['home']['name']}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold; color:white;">{m['home']['name']}</div>
                     <div style="font-size: 24px; color: #06b6d4; font-weight: 800;">{m['score_h'] if m['score_h'] is not None else '-'} : {m['score_a'] if m['score_a'] is not None else '-'}</div>
-                    <div style="width:40%; text-align:center; font-weight:bold;">{m['away']['name']}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold; color:white;">{m['away']['name']}</div>
                 </div>
                 <div style="font-size:10px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; margin-top:10px; padding-top:5px;">
                     🟨 {m['yellow']} | 🟥 {m['red']} | 🎯 {m['pens']} | ⚠️ {m['og']}
@@ -135,8 +161,10 @@ with tab1:
                 a = st.number_input(f"Goals {m['away']['name']}", 0, 15, m['score_a'] if m['score_a'] is not None else 0, key=f"a_{m['id']}")
                 y = st.slider("Yellow Cards", 0, 10, m['yellow'], key=f"y_{m['id']}")
                 r = st.checkbox("Red Card", value=bool(m['red']), key=f"r_{m['id']}")
+                p = st.number_input("Penalties", 0, 5, m['pens'], key=f"p_{m['id']}")
+                o = st.number_input("Own Goals", 0, 5, m['og'], key=f"o_{m['id']}")
                 if st.button("Save", key=f"b_{m['id']}"):
-                    m.update({"score_h": h, "score_a": a, "yellow": y, "red": int(r), "finished": True})
+                    m.update({"score_h": h, "score_a": a, "yellow": y, "red": int(r), "pens": p, "og": o, "finished": True})
                     st.rerun()
 
 with tab2:
@@ -160,21 +188,14 @@ with tab2:
             st.table(df)
 
 with tab3:
-    st.subheader("🔮 Gemini AI Expert Analyst")
+    st.markdown("### 🔮 Gemini AI Expert Analyst")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        
-        # --- ΘΩΡΑΚΙΣΜΕΝΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
         try:
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            # Προτίμηση στο flash, μετά στο pro
-            if 'models/gemini-1.5-flash' in available_models: model_id = 'models/gemini-1.5-flash'
-            elif 'models/gemini-pro' in available_models: model_id = 'models/gemini-pro'
-            else: model_id = available_models[0]
-            
+            model_id = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else 'models/gemini-pro'
             model = genai.GenerativeModel(model_id)
-            st.sidebar.info(f"AI Model: {model_id}")
             
             t_list = sorted([t['name'] for t in INITIAL_TEAMS])
             c1, c2 = st.columns(2)
@@ -186,5 +207,5 @@ with tab3:
                     response = model.generate_content(f"Analyze World Cup 2026 match: {home} vs {away}. Prediction score and card probability in Greek.")
                     st.info(response.text)
         except Exception as e:
-            st.error(f"Error connecting to AI: {e}")
+            st.error(f"Error: {e}")
     else: st.error("Add GEMINI_API_KEY to secrets.")
