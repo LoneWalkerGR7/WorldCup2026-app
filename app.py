@@ -227,47 +227,48 @@ with t1:
                     <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
                     <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['a']}</div>
                 </div>
-                <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
-                    🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
-                </div>
-                <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
-            with st.expander("✏️ Επεξεργασία Παιχνιδιού"):
+            with st.expander("✏️ Επεξεργασία Stats"):
                 colh, cola = st.columns(2)
-                sh = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
-                ra = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
-                ph = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
-                if st.button("Save Stats", key=f"btn{m['id']}"):
-                    m.update({"sh": sh, "sa": sa, "fin": True, "y_h": yh, "y_a": ya, "r_h": int(rh), "r_a": int(ra), "p_h": ph, "p_a": pa, "og_h": oh, "og_a": oa})
+                sh_i = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_i = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_i = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_i = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh_i = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
+                ra_i = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
+                ph_i = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa_i = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh_i = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa_i = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                if st.button("Save Result", key=f"s{m['id']}"):
+                    m.update({"sh": sh_i, "sa": sa_i, "y_h": yh_i, "y_a": ya_i, "r_h": int(rh_i), "r_a": int(ra_i), "p_h": ph_i, "p_a": pa_i, "og_h": oh_i, "og_a": oa_i, "fin": True})
                     st.rerun()
 
 with t2:
-    GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
-    cols_s = st.columns(3)
-    for i, gId in enumerate(GROUPS_L):
-        with cols_s[i % 3]:
-            st.markdown(f"#### Group {gId}")
-            g_teams = list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId]))
+    cols_std = st.columns(3)
+    for i, gId in enumerate(GROUPS):
+        with cols_std[i % 3]:
+            st.markdown(f"### Group {gId}")
+            g_teams = [t['n'] for t in TEAMS if t['g'] == gId]
             res = []
             for t in g_teams:
-                pts, gd = 0, 0
+                pts, gd, y, r, p, og = 0, 0, 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
                     if m['fin'] and (m['h'] == t or m['a'] == t):
                         is_h = m['h'] == t
                         h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+                        y += m['y_h'] if is_h else m['y_a']
+                        r += m['r_h'] if is_h else m['r_a']
+                        p += m['p_h'] if is_h else m['p_a']
+                        og += m['og_h'] if is_h else m['og_a']
                         gd += (h_s - a_s)
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
-                res.append({"Team": t, "Pts": pts, "GD": gd})
-            st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
+                res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
+            df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
+            st.table(df)
+
 
 # Προσθήκη αυτής της συνάρτησης ΠΡΙΝ το tab3 για να έχει μνήμη η AI
 @st.cache_data(ttl=3600) # Κρατάει την πρόβλεψη στη μνήμη για 1 ώρα
