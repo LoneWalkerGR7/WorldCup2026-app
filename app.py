@@ -3,7 +3,7 @@ import pandas as pd
 import random
 import google.generativeai as genai
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
@@ -180,12 +180,21 @@ def auto_play():
             m['r_a'] = 1 if random.random() > 0.95 else 0
             m['p_h'] = 1 if random.random() > 0.9 else 0
             m['p_a'] = 1 if random.random() > 0.9 else 0
+            m['og_h'] = 1 if random.random() > 0.98 else 0
+            m['og_a'] = 1 if random.random() > 0.98 else 0
             m['fin'] = True
     st.rerun()
 
 def reset():
     if 'wc_matches' in st.session_state: del st.session_state['wc_matches']
     st.rerun()
+
+# Συναρτήση για AI (Με Caching για αποφυγή 429)
+@st.cache_data(ttl=3600)
+def get_ai_prediction(model_id, prompt):
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(model_id)
+    return model.generate_content(prompt).text
 
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
@@ -235,18 +244,18 @@ with t1:
             """, unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία Παιχνιδιού"):
                 colh, cola = st.columns(2)
-                sh = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
-                ra = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
-                ph = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                sh_val = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_val = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_val = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_val = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh_val = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
+                ra_val = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
+                ph_val = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa_val = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh_val = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa_val = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 if st.button("Save Stats", key=f"btn{m['id']}"):
-                    m.update({"sh": sh, "sa": sa, "fin": True, "y_h": yh, "y_a": ya, "r_h": int(rh), "r_a": int(ra), "p_h": ph, "p_a": pa, "og_h": oh, "og_a": oa})
+                    m.update({"sh": sh_val, "sa": sa_val, "fin": True, "y_h": yh_val, "y_a": ya_val, "r_h": int(rh_val), "r_a": int(ra_val), "p_h": ph_val, "p_a": pa_val, "og_h": oh_val, "og_a": oa_val})
                     st.rerun()
 
 with t2:
@@ -255,74 +264,64 @@ with t2:
     for i, gId in enumerate(GROUPS_L):
         with cols_s[i % 3]:
             st.markdown(f"#### Group {gId}")
+            # Get teams list for current group
             g_teams = list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId]))
             res = []
             for t in g_teams:
-                pts, gd = 0, 0
+                pts, gd, y, r, p, og = 0, 0, 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
                     if m['fin'] and (m['h'] == t or m['a'] == t):
                         is_h = m['h'] == t
                         h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+                        y += m['y_h'] if is_h else m['y_a']
+                        r += m['r_h'] if is_h else m['r_a']
+                        p += m['p_h'] if is_h else m['p_a']
+                        og += m['og_h'] if is_h else m['og_a']
                         gd += (h_s - a_s)
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
-                res.append({"Team": t, "Pts": pts, "GD": gd})
-            st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
+                res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
+            df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
+            st.table(df)
 
-# Προσθήκη αυτής της συνάρτησης ΠΡΙΝ το tab3 για να έχει μνήμη η AI
-@st.cache_data(ttl=3600) # Κρατάει την πρόβλεψη στη μνήμη για 1 ώρα
-def get_ai_prediction(model_id, prompt):
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(model_id)
-    return model.generate_content(prompt).text
 with t3:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
-        genai.configure(api_key=api_key)
         try:
-            # Έξυπνη επιλογή μοντέλου για αποφυγή 404
+            genai.configure(api_key=api_key)
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
-            model = genai.GenerativeModel(working_model)
             
-            # Λίστα ομάδων ταξινομημένη
-            all_t = sorted(list(set([t['n'] for t in TEAMS])))
+            all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
-            h_t = c1.selectbox("Home Team", all_t, key="sel_h")
-            a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
+            h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
+            a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
-                    # ΤΟ ΕΞΕΛΙΓΜΕΝΟ ΣΟΥ PROMPT
                     advanced_prompt = f"""
                     Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
                     Κάνε μια βαθιά, επαγγελματική και τεχνική ανάλυση για τον αγώνα του Μουντιάλ 2026: {h_t} εναντίον {a_t}.
 
                     Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται στα εξής πραγματικά στοιχεία:
-                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας): Ανακάλεσε τα πρόσφατα αποτελέσματά τους, τη δυναμική τους στην επίθεση και την άμυνα.
-                    2. Προϊστορία σε Μουντιάλ: Τι συνέβη σε προηγούμενες αναμετρήσεις τους σε τελικές φάσεις Παγκοσμίου Κυπέλλου (αν υπάρχουν) ή γενικότερη προϊστορία.
-                    3. Τακτική Προσέγγιση: Πώς επηρεάζει το στυλ παιχνιδιού τους το τελικό αποτέλεσμα.
+                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας).
+                    2. Προϊστορία σε Μουντιάλ.
+                    3. Τακτική Προσέγγιση.
 
                     Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
                     - 📊 **Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)**
                     - 📜 **Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά**
                     - 🔮 **Πρόβλεψη Σκορ & Πιθανότητες Καρτών / Κόρνερ**
                     - 🎯 **Σύντομο Τακτικό Συμπέρασμα**
-
-                    Απέφυγε γενικότητες και κλισέ εκφράσεις. Εστίασε αυστηρά στα δεδομένα και την τεχνική προσέγγιση.
                     """
-                    
-                    prompt = f"Analyze World Cup 2026 match: {h_t} vs {a_t}. Give a deep analysis, score and card probability in Greek."
-                    
                     try:
-                        # Καλούμε τη συνάρτηση με την "μνήμη" (cache)
-                        result_text = get_ai_prediction(working_model, prompt)
+                        result_text = get_ai_prediction(working_model, advanced_prompt)
                         st.markdown("---")
                         st.markdown(result_text)
                     except Exception as e:
                         if "429" in str(e):
-                            st.error("🚨 Το όριο της Google εξαντλήθηκε. Δοκιμάστε ξανά σε 2-3 λεπτά ή φτιάξτε ένα νέο API Key.")
+                            st.error("🚨 Το όριο της Google εξαντλήθηκε. Δοκιμάστε ξανά σε 2-3 λεπτά.")
                         else:
                             st.error(f"Σφάλμα: {e}")
         except Exception as e:
