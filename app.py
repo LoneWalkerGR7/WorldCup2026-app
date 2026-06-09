@@ -22,6 +22,27 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
+        /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
+    div[data-testid="stTable"] {
+        background-color: #0f172a;
+        border-radius: 10px;
+        border: 1px solid #1e293b;
+        padding: 5px;
+    }
+    div[data-testid="stTable"] table {
+        color: white !important;
+        width: 100% !important;
+    }
+    
+    /* ΔΙΟΡΘΩΣΗ: ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
+    button[data-testid="stBaseButton-secondary"] {
+        color: black !important;
+        background-color: #f1f5f9 !important;
+        font-weight: 800 !important;
+        border: 2px solid #ffffff !important;
+        text-transform: uppercase;
+    }
+
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
     .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
 
