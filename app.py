@@ -5,15 +5,19 @@ import google.generativeai as genai
 import os
 from datetime import datetime
 
-# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
+# --- 1. CONFIG & CSS (COSMIC THEME & WHITE TEXT) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
     <style>
+    /* Global Styles */
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-    h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     
+    /* Λευκά γράμματα παντού */
+    h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown { color: white !important; }
+    
+    /* Dashboard Stats */
     .stat-card {
         background: #0f172a;
         border: 1px solid #1e293b;
@@ -22,7 +26,19 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-        /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
+    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
+
+    /* Match Cards */
+    .match-card {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+    
+    /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
     div[data-testid="stTable"] {
         background-color: #0f172a;
         border-radius: 10px;
@@ -32,9 +48,10 @@ st.markdown("""
     div[data-testid="stTable"] table {
         color: white !important;
         width: 100% !important;
+        font-size: 12px !important;
     }
     
-    /* ΔΙΟΡΘΩΣΗ: ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
+    /* ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: #f1f5f9 !important;
@@ -42,28 +59,14 @@ st.markdown("""
         border: 2px solid #ffffff !important;
         text-transform: uppercase;
     }
-
-    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
-
-    .match-card {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 10px;
-    }
-    .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
-    .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
-    button[data-testid="stBaseButton-secondary"] {
-        color: black !important;
-        background-color: white !important;
-        font-weight: 800 !important;
+    /* Auto-Play Button */
+    button[data-testid="stBaseButton-primary"] {
+        background-color: #ef4444 !important;
+        color: white !important;
         border: none !important;
+        font-weight: 800 !important;
     }
-    
-    div[data-testid="stTable"] table { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
