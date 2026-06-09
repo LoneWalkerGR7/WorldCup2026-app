@@ -212,7 +212,7 @@ with t1:
                 <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
-            with st.expander("✏️ Edit Match Stats"):
+            with st.expander("✏️ Επεξεργασία Παιχνιδιού"):
                 colh, cola = st.columns(2)
                 sh = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
                 sa = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
@@ -262,7 +262,7 @@ with t3:
             h_t = c1.selectbox("Home Team", all_t, key="sel_h")
             a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
-                with st.spinner("AI is calculating probabilities..."):
+                with st.spinner("Μετράω τα κουκιά...."):
                     resp = model.generate_content(f"Analyze World Cup 2026: {h_t} vs {a_t}. Score and card probability in Greek.")
                     st.info(resp.text)
         except Exception as e: st.error(f"Error: {e}")
