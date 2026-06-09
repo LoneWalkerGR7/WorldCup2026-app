@@ -9,11 +9,8 @@ st.set_page_config(page_title="World Cup 2026 Pro", layout="wide", page_icon="�
 
 st.markdown("""
     <style>
-    /* Global Styles */
     .stApp { background-color: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-    
-    /* Dashboard Stats Cards */
     .stat-card {
         background: #0f172a;
         border: 1px solid #1e293b;
@@ -24,8 +21,6 @@ st.markdown("""
     }
     .stat-val { font-size: 24px; font-weight: 800; color: #06b6d4; font-family: 'Monaco', monospace; }
     .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
-
-    /* Match Box Design */
     .match-card {
         background: #0f172a;
         border: 1px solid #1e293b;
@@ -34,17 +29,7 @@ st.markdown("""
         margin-bottom: 15px;
     }
     .group-tag { font-size: 10px; background: rgba(6, 182, 212, 0.1); color: #22d3ee; padding: 2px 8px; border-radius: 99px; font-weight: bold; }
-    
-    /* Buttons */
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    /* Table Styling */
+    .stButton>button { width: 100%; border-radius: 10px; font-weight: bold; text-transform: uppercase; }
     .stTable { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; }
     </style>
     """, unsafe_allow_html=True)
@@ -107,7 +92,6 @@ total_r = sum(m['red'] for m in finished)
 total_p = sum(m['pens'] for m in finished)
 total_og = sum(m['og'] for m in finished)
 
-# Dashboard Row 1
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(finished)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
 with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{total_goals}</div><div class="stat-label">Goals</div></div>', unsafe_allow_html=True)
@@ -116,9 +100,8 @@ with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee">{total_p}</div><div class="stat-label">Penalties</div></div>', unsafe_allow_html=True)
 with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c">{total_og}</div><div class="stat-label">Own Goals</div></div>', unsafe_allow_html=True)
 
-# Dashboard Row 2 (Buttons)
 st.write("")
-b1, b2, b3 = st.columns([2, 1, 1])
+b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ AUTO-PLAY TOURNAMENT SIMULATOR", on_click=auto_simulate, type="primary")
 with b2: st.button("🔄 RESET ALL", on_click=reset_all)
 
@@ -128,24 +111,21 @@ tab1, tab2, tab3 = st.tabs(["📅 CALENDAR & LIVE STATS", "📊 GROUP STANDINGS"
 with tab1:
     g_filter = st.selectbox("Filter by Group:", ["All"] + GROUPS)
     display_matches = [m for m in st.session_state.wc_matches if g_filter == "All" or m['group'] == g_filter]
-    
     cols = st.columns(3)
     for idx, m in enumerate(display_matches):
         with cols[idx % 3]:
             st.markdown(f"""
             <div class="match-card">
-                <div style="display:flex; justify-content: space-between;">
+                <div style="display:flex; justify-content: space-between; margin-bottom:10px;">
                     <span class="group-tag">GROUP {m['group']}</span>
                     <span style="color: #10b981; font-weight: bold; font-size: 10px;">{'FINISHED' if m['finished'] else ''}</span>
                 </div>
-                <div style="display:flex; justify-content: space-around; align-items:center; padding: 15px 0;">
-                    <div style="text-align:center; width:40%; font-weight:bold;">{m['home']['name']}</div>
-                    <div style="font-size: 24px; color: #06b6d4; font-weight: 800;">
-                        {m['score_h'] if m['score_h'] is not None else '-'} : {m['score_a'] if m['score_a'] is not None else '-'}
-                    </div>
-                    <div style="text-align:center; width:40%; font-weight:bold;">{m['away']['name']}</div>
+                <div style="display:flex; justify-content: space-around; align-items:center;">
+                    <div style="width:40%; text-align:center; font-weight:bold;">{m['home']['name']}</div>
+                    <div style="font-size: 24px; color: #06b6d4; font-weight: 800;">{m['score_h'] if m['score_h'] is not None else '-'} : {m['score_a'] if m['score_a'] is not None else '-'}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold;">{m['away']['name']}</div>
                 </div>
-                <div style="font-size:10px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; pt-5;">
+                <div style="font-size:10px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; margin-top:10px; padding-top:5px;">
                     🟨 {m['yellow']} | 🟥 {m['red']} | 🎯 {m['pens']} | ⚠️ {m['og']}
                 </div>
             </div>
@@ -183,14 +163,28 @@ with tab3:
     st.subheader("🔮 Gemini AI Expert Analyst")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
-        t_list = sorted([t['name'] for t in INITIAL_TEAMS])
-        c1, c2 = st.columns(2)
-        home = c1.selectbox("Home Team", t_list)
-        away = c2.selectbox("Away Team", t_list, index=1)
-        if st.button("GENERATE PRO PREDICTION"):
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
-            with st.spinner("AI is analyzing tactics..."):
-                response = model.generate_content(f"Analyze World Cup 2026 match: {home} vs {away}. Prediction score and card probability in Greek.")
-                st.info(response.text)
+        genai.configure(api_key=api_key)
+        
+        # --- ΘΩΡΑΚΙΣΜΕΝΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
+        try:
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Προτίμηση στο flash, μετά στο pro
+            if 'models/gemini-1.5-flash' in available_models: model_id = 'models/gemini-1.5-flash'
+            elif 'models/gemini-pro' in available_models: model_id = 'models/gemini-pro'
+            else: model_id = available_models[0]
+            
+            model = genai.GenerativeModel(model_id)
+            st.sidebar.info(f"AI Model: {model_id}")
+            
+            t_list = sorted([t['name'] for t in INITIAL_TEAMS])
+            c1, c2 = st.columns(2)
+            home = c1.selectbox("Home Team", t_list)
+            away = c2.selectbox("Away Team", t_list, index=1)
+            
+            if st.button("GENERATE PRO PREDICTION"):
+                with st.spinner("AI is analyzing tactics..."):
+                    response = model.generate_content(f"Analyze World Cup 2026 match: {home} vs {away}. Prediction score and card probability in Greek.")
+                    st.info(response.text)
+        except Exception as e:
+            st.error(f"Error connecting to AI: {e}")
     else: st.error("Add GEMINI_API_KEY to secrets.")
