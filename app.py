@@ -4,7 +4,7 @@ import random
 import google.generativeai as genai
 import os
 
-# --- 1. CONFIG & CSS (ΠΛΗΡΗΣ ΔΙΟΡΘΩΣΗ ΧΡΩΜΑΤΩΝ) ---
+# --- 1. CONFIG & CSS (ΠΛΗΡΗΣ ΔΙΟΡΘΩΣΗ) ---
 st.set_page_config(page_title="World Cup 2026 Pro", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -13,8 +13,8 @@ st.markdown("""
     .stApp { background-color: #020617; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
     
-    /* Τίτλοι Ομίλων (Λευκά Γράμματα) */
-    h1, h2, h3, h4, h5, h6 { color: white !important; font-weight: 700 !important; }
+    /* Τίτλοι Ομίλων (Καθαρό Λευκό) */
+    h1, h2, h3, h4, h5, h6, .stMarkdown p { color: white !important; font-weight: 700 !important; }
     
     /* Dashboard Stats Cards */
     .stat-card {
@@ -38,13 +38,12 @@ st.markdown("""
     }
     .group-tag { font-size: 10px; background: rgba(6, 182, 212, 0.1); color: #22d3ee; padding: 2px 8px; border-radius: 99px; font-weight: bold; }
     
-    /* Πίνακες Βαθμολογίας (Λευκά Γράμματα και καθαρότητα) */
-    .stTable, table { color: white !important; width: 100%; }
-    thead tr th { color: #06b6d4 !important; background-color: #1e293b !important; }
-    tbody tr td { color: white !important; background-color: #0f172a !important; border-bottom: 1px solid #1e293b !important; }
-
-    /* Κουμπί Reset All (Μαύρα Γράμματα) */
-    div.stButton > button[kind="secondary"] {
+    /* Πίνακες Βαθμολογίας (Λευκά Γράμματα) */
+    [data-testid="stTable"] { color: white !important; }
+    table { color: white !important; }
+    
+    /* ΔΙΟΡΘΩΣΗ: Κουμπί Reset All (Μαύρα Γράμματα) */
+    button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: #f1f5f9 !important;
         border: none !important;
@@ -52,7 +51,7 @@ st.markdown("""
     }
     
     /* Κουμπί Auto-Play */
-    div.stButton > button[kind="primary"] {
+    button[data-testid="stBaseButton-primary"] {
         color: white !important;
         background-color: #ef4444 !important;
         border: none !important;
@@ -105,11 +104,12 @@ def auto_simulate():
     st.rerun()
 
 def reset_all():
-    del st.session_state['wc_matches']
+    if 'wc_matches' in st.session_state:
+        del st.session_state['wc_matches']
     st.rerun()
 
 # --- 5. HEADER & DASHBOARD ---
-st.markdown("<h1>🏆 MUNDIAL 2026 PRO DASHBOARD</h1>", unsafe_allow_html=True)
+st.title("🏆 MUNDIAL 2026 PRO DASHBOARD")
 
 finished = [m for m in st.session_state.wc_matches if m['finished']]
 total_goals = sum(m['score_h'] + m['score_a'] for m in finished)
@@ -129,7 +129,7 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ AUTO-PLAY TOURNAMENT SIMULATOR", on_click=auto_simulate, type="primary")
-with b2: st.button("🔄 RESET ALL", on_click=reset_all, kind="secondary")
+with b2: st.button("🔄 RESET ALL", on_click=reset_all, type="secondary")
 
 # --- 6. TABS ---
 tab1, tab2, tab3 = st.tabs(["📅 CALENDAR & LIVE STATS", "📊 GROUP STANDINGS", "🧠 AI PREDICTIONS"])
