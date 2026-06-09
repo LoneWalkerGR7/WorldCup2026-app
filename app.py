@@ -248,6 +248,12 @@ with t2:
                 res.append({"Team": t, "Pts": pts, "GD": gd})
             st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
+# Προσθήκη αυτής της συνάρτησης ΠΡΙΝ το tab3 για να έχει μνήμη η AI
+@st.cache_data(ttl=3600) # Κρατάει την πρόβλεψη στη μνήμη για 1 ώρα
+def get_ai_prediction(model_id, prompt):
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(model_id)
+    return model.generate_content(prompt).text
 with t3:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
@@ -286,17 +292,19 @@ with t3:
                     Απέφυγε γενικότητες και κλισέ εκφράσεις. Εστίασε αυστηρά στα δεδομένα και την τεχνική προσέγγιση.
                     """
                     
-                    try:
-                        resp = model.generate_content(advanced_prompt)
-                        st.markdown("---")
-                        st.markdown(resp.text)
-                    except Exception as ai_err:
-                        if "429" in str(ai_err):
-                            st.warning("⚠️ Η Google έβαλε όριο ταχύτητας (Quota Limit)! Περιμένετε 30 δευτερόλεπτα και ξαναπατήστε το κουμπί.")
-                        else:
-                            st.error(f"Σφάλμα AI: {ai_err}")
+                    prompt = f"Analyze World Cup 2026 match: {h_t} vs {a_t}. Give a deep analysis, score and card probability in Greek."
                     
-        except Exception as e: 
-            st.error(f"Error: {e}")
+                    try:
+                        # Καλούμε τη συνάρτηση με την "μνήμη" (cache)
+                        result_text = get_ai_prediction(working_model, prompt)
+                        st.markdown("---")
+                        st.markdown(result_text)
+                    except Exception as e:
+                        if "429" in str(e):
+                            st.error("🚨 Το όριο της Google εξαντλήθηκε. Δοκιμάστε ξανά σε 2-3 λεπτά ή φτιάξτε ένα νέο API Key.")
+                        else:
+                            st.error(f"Σφάλμα: {e}")
+        except Exception as e:
+            st.error(f"Σφάλμα σύνδεσης: {e}")
     else:
-        st.warning("Παρακαλώ ρυθμίστε το GEMINI_API_KEY στα Secrets του Streamlit.")
+        st.warning("Προσθέστε το GEMINI_API_KEY στα Secrets.")
