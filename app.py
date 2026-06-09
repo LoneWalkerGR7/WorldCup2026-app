@@ -249,20 +249,54 @@ with t2:
             st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
 with t3:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ...")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
         try:
+            # Έξυπνη επιλογή μοντέλου για αποφυγή 404
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
             model = genai.GenerativeModel(working_model)
+            
+            # Λίστα ομάδων ταξινομημένη
             all_t = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
             h_t = c1.selectbox("Home Team", all_t, key="sel_h")
             a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
-            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
-                with st.spinner("Μετράω τα κουκιά...."):
-                    resp = model.generate_content(f"Analyze World Cup 2026: {h_t} vs {a_t}. Score and card probability in Greek.")
-                    st.info(resp.text)
-        except Exception as e: st.error(f"Error: {e}")
+            
+            if st.button("GET AI PREDICTION", type="primary"):
+                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
+                    # ΤΟ ΕΞΕΛΙΓΜΕΝΟ ΣΟΥ PROMPT
+                    advanced_prompt = f"""
+                    Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
+                    Κάνε μια βαθιά, επαγγελματική και τεχνική ανάλυση για τον αγώνα του Μουντιάλ 2026: {h_t} εναντίον {a_t}.
+
+                    Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται στα εξής πραγματικά στοιχεία:
+                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας): Ανακάλεσε τα πρόσφατα αποτελέσματά τους, τη δυναμική τους στην επίθεση και την άμυνα.
+                    2. Προϊστορία σε Μουντιάλ: Τι συνέβη σε προηγούμενες αναμετρήσεις τους σε τελικές φάσεις Παγκοσμίου Κυπέλλου (αν υπάρχουν) ή γενικότερη προϊστορία.
+                    3. Τακτική Προσέγγιση: Πώς επηρεάζει το στυλ παιχνιδιού τους το τελικό αποτέλεσμα.
+
+                    Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
+                    - 📊 **Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)**
+                    - 📜 **Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά**
+                    - 🔮 **Πρόβλεψη Σκορ & Πιθανότητες Καρτών / Κόρνερ**
+                    - 🎯 **Σύντομο Τακτικό Συμπέρασμα**
+
+                    Απέφυγε γενικότητες και κλισέ εκφράσεις. Εστίασε αυστηρά στα δεδομένα και την τεχνική προσέγγιση.
+                    """
+                    
+                    try:
+                        resp = model.generate_content(advanced_prompt)
+                        st.markdown("---")
+                        st.markdown(resp.text)
+                    except Exception as ai_err:
+                        if "429" in str(ai_err):
+                            st.warning("⚠️ Η Google έβαλε όριο ταχύτητας (Quota Limit)! Περιμένετε 30 δευτερόλεπτα και ξαναπατήστε το κουμπί.")
+                        else:
+                            st.error(f"Σφάλμα AI: {ai_err}")
+                    
+        except Exception as e: 
+            st.error(f"Error: {e}")
+    else:
+        st.warning("Παρακαλώ ρυθμίστε το GEMINI_API_KEY στα Secrets του Streamlit.")
