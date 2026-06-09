@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 # --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
-st.set_page_config(page_title="World Cup 2026 Official", layout="wide", page_icon="🏆")
+st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
     <style>
@@ -23,6 +23,7 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
 
     .match-card {
         background: #0f172a;
@@ -34,7 +35,6 @@ st.markdown("""
     .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
-    /* Reset Button: Black text */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: white !important;
@@ -42,7 +42,6 @@ st.markdown("""
         border: none !important;
     }
     
-    /* Tables White Text */
     div[data-testid="stTable"] table { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -64,7 +63,7 @@ TEAMS = [
 ]
 
 # --- 3. ΤΟ ΠΛΗΡΕΣ ΠΡΟΓΡΑΜΜΑ (72 ΑΓΩΝΕΣ) ---
-RAW_MATCHES_LIST = [
+RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "Mexico", "South Africa"],
     ["A", "12/06 05:00", "Estadio Akron", "South Korea", "Czechia"],
     ["B", "12/06 22:00", "BMO Field", "Canada", "Bosnia and Herzegovina"],
@@ -75,78 +74,78 @@ RAW_MATCHES_LIST = [
     ["C", "14/06 04:00", "Gillette Stadium", "Haiti", "Scotland"],
     ["E", "14/06 20:00", "NRG Stadium", "Germany", "Curacao"],
     ["F", "14/06 23:00", "AT&T Stadium", "Netherlands", "Japan"],
-    ["E", "15/06 02:00", "Lincoln Financial Field", "Ivory Coast", "Ecuador"],
+    ["E", "15/06 02:00", "Lincoln Field", "Ivory Coast", "Ecuador"],
     ["F", "15/06 05:00", "Estadio BBVA", "Sweden", "Tunisia"],
-    ["H", "15/06 19:00", "Mercedes-Benz Stadium", "Spain", "Cape Verde"],
+    ["H", "15/06 19:00", "Mercedes-Benz", "Spain", "Cape Verde"],
     ["G", "15/06 22:00", "Lumen Field", "Belgium", "Egypt"],
-    ["H", "16/06 01:00", "Hard Rock Stadium", "Saudi Arabia", "Uruguay"],
+    ["H", "16/06 01:00", "Hard Rock", "Saudi Arabia", "Uruguay"],
     ["G", "16/06 04:00", "SoFi Stadium", "Iran", "New Zealand"],
     ["J", "17/06 07:00", "Levi's Stadium", "Austria", "Jordan"],
-    ["I", "16/06 10:00", "MetLife Stadium", "France", "Senegal"],
-    ["I", "17/06 01:00", "Gillette Stadium", "Iraq", "Norway"],
-    ["J", "17/06 04:00", "Arrowhead Stadium", "Argentina", "Algeria"],
+    ["I", "16/06 10:00", "MetLife", "France", "Senegal"],
+    ["I", "17/06 01:00", "Gillette", "Iraq", "Norway"],
+    ["J", "17/06 04:00", "Arrowhead", "Argentina", "Algeria"],
     ["K", "17/06 08:00", "NRG Stadium", "Portugal", "DR Congo"],
     ["L", "17/06 11:00", "AT&T Stadium", "England", "Croatia"],
     ["L", "18/06 02:00", "BMO Field", "Ghana", "Panama"],
     ["K", "18/06 05:00", "Estadio Azteca", "Uzbekistan", "Colombia"],
-    ["A", "18/06 07:00", "Mercedes-Benz Stadium", "Czechia", "South Africa"],
+    ["A", "18/06 07:00", "Mercedes-Benz", "Czechia", "South Africa"],
     ["B", "18/06 10:00", "SoFi Stadium", "Switzerland", "Bosnia and Herzegovina"],
     ["B", "19/06 01:00", "BC Place", "Canada", "Qatar"],
     ["A", "19/06 04:00", "Estadio Akron", "Mexico", "South Korea"],
     ["D", "20/06 06:00", "Levi's Stadium", "Turkey", "Paraguay"],
     ["D", "19/06 10:00", "Lumen Field", "USA", "Australia"],
-    ["C", "20/06 01:00", "Gillette Stadium", "Scotland", "Morocco"],
-    ["C", "20/06 03:30", "Lincoln Financial Field", "Brazil", "Haiti"],
+    ["C", "20/06 01:00", "Gillette", "Scotland", "Morocco"],
+    ["C", "20/06 03:30", "Lincoln Field", "Brazil", "Haiti"],
     ["F", "21/06 07:00", "Estadio BBVA", "Tunisia", "Japan"],
     ["F", "20/06 08:00", "NRG Stadium", "Netherlands", "Sweden"],
     ["E", "20/06 11:00", "BMO Field", "Germany", "Ivory Coast"],
-    ["E", "21/06 03:00", "Arrowhead Stadium", "Ecuador", "Curacao"],
-    ["H", "21/06 07:00", "Mercedes-Benz Stadium", "Spain", "Saudi Arabia"],
+    ["E", "21/06 03:00", "Arrowhead", "Ecuador", "Curacao"],
+    ["H", "21/06 07:00", "Mercedes-Benz", "Spain", "Saudi Arabia"],
     ["G", "21/06 10:00", "SoFi Stadium", "Belgium", "Iran"],
-    ["H", "22/06 01:00", "Hard Rock Stadium", "Uruguay", "Cape Verde"],
+    ["H", "22/06 01:00", "Hard Rock", "Uruguay", "Cape Verde"],
     ["G", "22/06 04:00", "BC Place", "New Zealand", "Egypt"],
     ["J", "22/06 08:00", "AT&T Stadium", "Argentina", "Austria"],
-    ["I", "23/06 12:00", "Lincoln Financial Field", "France", "Iraq"],
-    ["I", "23/06 03:00", "MetLife Stadium", "Norway", "Senegal"],
+    ["I", "23/06 12:00", "Lincoln Field", "France", "Iraq"],
+    ["I", "23/06 03:00", "MetLife", "Norway", "Senegal"],
     ["J", "23/06 06:00", "Levi's Stadium", "Jordan", "Algeria"],
     ["K", "23/06 08:00", "NRG Stadium", "Portugal", "Uzbekistan"],
-    ["L", "23/06 11:00", "Gillette Stadium", "England", "Ghana"],
+    ["L", "23/06 11:00", "Gillette", "England", "Ghana"],
     ["L", "24/06 02:00", "BMO Field", "Panama", "Croatia"],
     ["K", "24/06 05:00", "Estadio Akron", "Colombia", "DR Congo"],
     ["B", "24/06 10:00", "BC Place", "Switzerland", "Canada"],
     ["B", "24/06 10:00", "Lumen Field", "Bosnia and Herzegovina", "Qatar"],
-    ["C", "25/06 01:00", "Hard Rock Stadium", "Scotland", "Brazil"],
-    ["C", "25/06 01:00", "Mercedes-Benz Stadium", "Morocco", "Haiti"],
+    ["C", "25/06 01:00", "Hard Rock", "Scotland", "Brazil"],
+    ["C", "25/06 01:00", "Mercedes-Benz", "Morocco", "Haiti"],
     ["A", "25/06 04:00", "Estadio Azteca", "Czechia", "Mexico"],
     ["A", "25/06 04:00", "Estadio BBVA", "South Africa", "South Korea"],
-    ["E", "25/06 11:00", "MetLife Stadium", "Ecuador", "Germany"],
-    ["E", "25/06 11:00", "Lincoln Financial Field", "Curacao", "Ivory Coast"],
+    ["E", "25/06 11:00", "MetLife", "Ecuador", "Germany"],
+    ["E", "25/06 11:00", "Lincoln Field", "Curacao", "Ivory Coast"],
     ["F", "26/06 02:00", "AT&T Stadium", "Japan", "Sweden"],
-    ["F", "26/06 02:00", "Arrowhead Stadium", "Tunisia", "Netherlands"],
+    ["F", "26/06 02:00", "Arrowhead", "Tunisia", "Netherlands"],
     ["D", "26/06 05:00", "SoFi Stadium", "Turkey", "USA"],
     ["D", "26/06 05:00", "Levi's Stadium", "Paraguay", "Australia"],
-    ["I", "26/06 10:00", "Gillette Stadium", "Norway", "France"],
+    ["I", "26/06 10:00", "Gillette", "Norway", "France"],
     ["I", "26/06 10:00", "BMO Field", "Senegal", "Iraq"],
     ["H", "27/06 03:00", "Estadio Akron", "Uruguay", "Spain"],
     ["H", "27/06 03:00", "NRG Stadium", "Cape Verde", "Saudi Arabia"],
     ["G", "27/06 06:00", "Lumen Field", "Egypt", "Iran"],
     ["G", "27/06 06:00", "BC Place", "New Zealand", "Belgium"],
-    ["L", "28/06 12:00", "MetLife Stadium", "Panama", "England"],
-    ["L", "28/06 12:00", "Lincoln Financial Field", "Croatia", "Ghana"],
-    ["K", "28/06 02:30", "Hard Rock Stadium", "Colombia", "Portugal"],
-    ["K", "28/06 02:30", "Mercedes-Benz Stadium", "DR Congo", "Uzbekistan"],
-    ["J", "28/06 05:00", "Arrowhead Stadium", "Algeria", "Austria"],
+    ["L", "28/06 12:00", "MetLife", "Panama", "England"],
+    ["L", "28/06 12:00", "Lincoln Field", "Croatia", "Ghana"],
+    ["K", "28/06 02:30", "Hard Rock", "Colombia", "Portugal"],
+    ["K", "28/06 02:30", "Mercedes-Benz", "DR Congo", "Uzbekistan"],
+    ["J", "28/06 05:00", "Arrowhead", "Algeria", "Austria"],
     ["J", "28/06 05:00", "AT&T Stadium", "Jordan", "Argentina"]
 ]
 
 # --- 4. SESSION STATE INITIALIZATION ---
 if 'wc_matches' not in st.session_state:
     matches = []
-    for i, m_data in enumerate(RAW_MATCHES_LIST):
+    for i, m_data in enumerate(RAW_MATCHES):
         matches.append({
             "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
             "h": m_data[3], "a": m_data[4], "sh": None, "sa": None, "fin": False,
-            "y": 0, "r": 0, "p": 0, "og": 0
+            "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0
         })
     st.session_state.wc_matches = matches
 
@@ -155,26 +154,42 @@ def auto_play():
     for m in st.session_state.wc_matches:
         if not m['fin']:
             m['sh'], m['sa'] = random.randint(0, 4), random.randint(0, 4)
-            m['y'], m['r'] = random.randint(1, 6), (1 if random.random() > 0.9 else 0)
-            m['p'], m['og'] = (1 if random.random() > 0.85 else 0), (1 if random.random() > 0.96 else 0)
+            m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
+            m['r_h'] = 1 if random.random() > 0.95 else 0
+            m['r_a'] = 1 if random.random() > 0.95 else 0
+            m['p_h'] = 1 if random.random() > 0.9 else 0
+            m['p_a'] = 1 if random.random() > 0.9 else 0
             m['fin'] = True
     st.rerun()
 
-def reset_tourney():
+def reset():
     if 'wc_matches' in st.session_state: del st.session_state['wc_matches']
     st.rerun()
 
-# --- 6. UI ---
-st.markdown("<h1>🏆 MUNDIAL 2026 OFFICIAL PORTAL</h1>", unsafe_allow_html=True)
+# --- 6. HEADER & DASHBOARD ---
+st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
 
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
-c1, c2, c3, c4 = st.columns(4)
+total_y = sum(m['y_h'] + m['y_a'] for m in fin_m)
+total_r = sum(m['r_h'] + m['r_a'] for m in fin_m)
+total_p = sum(m['p_h'] + m['p_a'] for m in fin_m)
+total_og = sum(m['og_h'] + m['og_a'] for m in fin_m)
+
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
 with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["sh"]+m["sa"] for m in fin_m)}</div><div class="stat-label">Goals</div></div>', unsafe_allow_html=True)
-with c3: st.button("⚡ AUTO-PLAY SIMULATOR", on_click=auto_play, type="primary")
-with c4: st.button("🔄 RESET TOURNAMENT", on_click=reset_tourney, type="secondary")
+with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{total_y}</div><div class="stat-label">Yellow Cards</div></div>', unsafe_allow_html=True)
+with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{total_r}</div><div class="stat-label">Red Cards</div></div>', unsafe_allow_html=True)
+with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{total_p}</div><div class="stat-label">Penalties</div></div>', unsafe_allow_html=True)
+with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{total_og}</div><div class="stat-label">Own Goals</div></div>', unsafe_allow_html=True)
 
-t1, t2, t3 = st.tabs(["📅 CALENDAR & STATS", "📊 STANDINGS", "🔮 AI PREDICTIONS"])
+st.write("")
+b1, b2 = st.columns([2, 1])
+with b1: st.button("⚡ AUTO-PLAY TOURNAMENT SIMULATOR", on_click=auto_play, type="primary")
+with b2: st.button("🔄 RESET TOURNAMENT", on_click=reset, type="secondary")
+
+# --- 7. TABS ---
+t1, t2, t3 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
 with t1:
     cols = st.columns(3)
@@ -187,18 +202,31 @@ with t1:
                     <span style="font-size:10px; color:#94a3b8;">🕒 {m['dt']}</span>
                 </div>
                 <div style="display:flex; justify-content: space-around; align-items:center; padding:10px 0;">
-                    <div style="width:40%; text-align:center; font-weight:bold;">{m['h']}</div>
-                    <div style="font-size:22px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
-                    <div style="width:40%; text-align:center; font-weight:bold;">{m['a']}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['h']}</div>
+                    <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['a']}</div>
                 </div>
-                <div class="st-venue">📍 {m['st']} | 🟨 {m['y']} 🟥 {m['r']} 🎯 {m['p']}</div>
+                <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
+                    🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
+                </div>
+                <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
-            with st.expander("✏️ Edit Results"):
-                h_val = st.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"h{m['id']}")
-                a_val = st.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"a{m['id']}")
-                if st.button("Save", key=f"btn{m['id']}"):
-                    m.update({"sh": h_val, "sa": a_val, "fin": True}); st.rerun()
+            with st.expander("✏️ Edit Match Stats"):
+                colh, cola = st.columns(2)
+                sh = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
+                ra = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
+                ph = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                if st.button("Save Stats", key=f"btn{m['id']}"):
+                    m.update({"sh": sh, "sa": sa, "fin": True, "y_h": yh, "y_a": ya, "r_h": int(rh), "r_a": int(ra), "p_h": ph, "p_a": pa, "og_h": oh, "og_a": oa})
+                    st.rerun()
 
 with t2:
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -206,7 +234,7 @@ with t2:
     for i, gId in enumerate(GROUPS_L):
         with cols_s[i % 3]:
             st.markdown(f"#### Group {gId}")
-            g_teams = [t['n'] for t in TEAMS if t['g'] == gId]
+            g_teams = list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId]))
             res = []
             for t in g_teams:
                 pts, gd = 0, 0
@@ -221,22 +249,20 @@ with t2:
             st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
 with t3:
-    st.markdown("### 🔮 Η ΠΡΟΤΑΣΗ ΤΟΥ ΚΟΝΤΟΥ")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ...")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
         try:
-            # Dynamic Model Selection for 404 Prevention
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
             model = genai.GenerativeModel(working_model)
-            
-            t_names = sorted([t['n'] for t in TEAMS])
+            all_t = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
-            home_t = c1.selectbox("Home", t_names, key="sel_h")
-            away_t = c2.selectbox("Away", t_names, index=1, key="sel_a")
-            if st.button("GENERATE PRO PREDICTION", type="primary"):
-                with st.spinner("AI analyzing tactics..."):
-                    resp = model.generate_content(f"Analyze World Cup 2026: {home_t} vs {away_t}. Probable score in Greek.")
+            h_t = c1.selectbox("Home Team", all_t, key="sel_h")
+            a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
+            if st.button("GET AI PREDICTION", type="primary"):
+                with st.spinner("AI is calculating probabilities..."):
+                    resp = model.generate_content(f"Analyze World Cup 2026: {h_t} vs {a_t}. Score and card probability in Greek.")
                     st.info(resp.text)
         except Exception as e: st.error(f"Error: {e}")
