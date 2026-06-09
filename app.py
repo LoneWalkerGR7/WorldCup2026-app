@@ -261,7 +261,7 @@ with t3:
             c1, c2 = st.columns(2)
             h_t = c1.selectbox("Home Team", all_t, key="sel_h")
             a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
-            if st.button("GET AI PREDICTION", type="primary"):
+            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("AI is calculating probabilities..."):
                     resp = model.generate_content(f"Analyze World Cup 2026: {h_t} vs {a_t}. Score and card probability in Greek.")
                     st.info(resp.text)
