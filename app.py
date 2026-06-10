@@ -301,23 +301,93 @@ with t3:
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
                     advanced_prompt = f"""
-                    Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
-                    Κάνε μια βαθιά, επαγγελματική και τεχνική ανάλυση για τον αγώνα του Μουντιάλ 2026: {h_t} εναντίον {a_t}.
+                    You are a top football analyst and statistician specializing in the FIFA World Cup.
 
-                    Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται στα εξής πραγματικά στοιχεία:
-                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας).
-                    2. Προϊστορία σε Μουντιάλ.
-                    3. Τακτική Προσέγγιση.
-                    4. Τι βγήκε σε αντίστοιχη σειρά αγώνων του Μουντιάλ το συγκεκριμένο παιχνίδι,( πχ. τι σκορ βγήκε το έκτο παιχνίδι στη σειρά αγώνων στο περασμένο μουντιάλ )
+The user will provide:
+- {h_t} = Home Team
+- {a_t} = Away Team  
+- {match_number} = The sequential match number in the World Cup 2026 schedule (e.g. 8th match, 24th match)
 
-                    Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
-                    - 📊 **Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)**
-                    - 📜 **Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά**
-                    - 🔮 **Πρόβλεψη Σκορ & Πιθανότητες Καρτών / Κόρνερ / Over 2.5 / Ανατροπή στο σκορ / Πέναλτι / Αυτογκόλ**
-                    - 🎯 **Σύντομο Τακτικό Συμπέρασμα**
+**STEP 1 — WEB SEARCH (Mandatory before writing anything):**
+Search the web for the following real data:
+
+1. Last 10 official matches for {h_t} and {a_t} (results, goals scored/conceded)
+2. World Cup history for both teams (titles, best results, head-to-head in WCs)
+3. Tactical setup of both teams in their most recent matches (formation, pressing style, key players)
+4. **Historical match at position #{match_number}** in previous World Cups (2022, 2018, 2014):
+   - Find which match was #{match_number} in the official schedule of each of those tournaments
+   - Report the exact score, teams, and any notable stats (cards, corners, goals timing)
+   - Identify any patterns (e.g. "The Nth match tends to produce X goals on average")
+
+**STEP 2 — WRITE THE ANALYSIS in Greek, using Markdown:**
+
+---
+
+## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
+
+### 📊 Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)
+
+**{h_t}:**
+- Λίστα με αποτελέσματα, γκολ, φόρμα (Ν/Ι/Η)
+- Μέσος όρος γκολ per game (scored / conceded)
+- Τάσεις (π.χ. over/under, clean sheets, BTTS)
+
+**{a_t}:**
+- Ίδια δομή
+
+---
+
+### 📜 Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά
+
+- Ιστορικές επιδόσεις κάθε ομάδας σε Μουντιάλ
+- Αμεσα head-to-head σε Μουντιάλ (αν υπάρχουν)
+- Αξιοσημείωτες παρουσίες / απουσίες
+
+---
+
+### 🏟️ Ιστορικό Παιχνίδι #{match_number} σε Προηγούμενα Μουντιάλ
+
+> "Τι βγήκε ιστορικά στον αγώνα #{match_number} της επίσημης σειράς;"
+
+- **Μουντιάλ 2022:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | Κάρτες: X | Κόρνερ: X
+- **Μουντιάλ 2018:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | ...
+- **Μουντιάλ 2014:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | ...
+- **Μοτίβο / Συμπέρασμα:** Μέσος όρος γκολ, τάση για over/under, συχνότητα καρτών κτλ.
+
+---
+
+### 🔮 Πρόβλεψη Σκορ & Στατιστικές Πιθανότητες
+
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| Αποτέλεσμα | {h_t} / Ισοπαλία / {a_t} | XX% / XX% / XX% |
+| Προβλεπόμενο Σκορ | X - X | — |
+| Over 2.5 Goals | Ναι / Όχι | XX% |
+| BTTS (Και οι δύο να σκοράρουν) | Ναι / Όχι | XX% |
+| Κόρνερ Over 9.5 | Ναι / Όχι | XX% |
+| Κίτρινες Κάρτες Over 3.5 | Ναι / Όχι | XX% |
+| Πέναλτι | Ναι / Όχι | XX% |
+| Αυτογκόλ | Ναι / Όχι | XX% |
+| Ανατροπή στο Σκορ | Ναι / Όχι | XX% |
+
+---
+
+### 🎯 Σύντομο Τακτικό Συμπέρασμα
+
+- Ποια ομάδα έχει τακτικό πλεονέκτημα και γιατί
+- Key matchup που θα κρίνει τον αγώνα
+- Η τελική σύσταση με 2-3 προτεινόμενα στοιχήματα (value bets)
+
+---
+
+**ΚΑΝΟΝΕΣ:**
+- Όλη η απάντηση ΜΟΝΟ στα Ελληνικά
+- Χρησιμοποίησε ΜΟΝΟ πραγματικά δεδομένα από το web search
+- Αν δεν βρεις δεδομένα για κάποιο σημείο, γράψε "Δεν βρέθηκαν διαθέσιμα δεδομένα" — ΜΗΝ εφευρίσκεις στατιστικά
+- Το ιστορικό section του αγώνα #{match_number} είναι ΥΠΟΧΡΕΩΤΙΚΟ να συμπληρωθεί με αναζήτηση**
                     """
                     try:
-                        result_text = get_ai_prediction(working_model, advanced_prompt)
+                        result_text = Μετράω_τα_κουκιά(working_model, advanced_prompt)
                         st.markdown("---")
                         st.markdown(result_text)
                     except Exception as e:
