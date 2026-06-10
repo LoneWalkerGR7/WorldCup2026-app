@@ -317,7 +317,7 @@ with t3:
                     
                     try:
                         # Καλούμε τη συνάρτηση με την "μνήμη" (cache)
-                        result_text = get_ai_prediction(working_model, prompt)
+                        result_text = Μετράω_τα_κουκιά(working_model, prompt)
                         st.markdown("---")
                         st.markdown(result_text)
                     except Exception as e:
