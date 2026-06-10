@@ -5,7 +5,7 @@ import google.generativeai as genai
 import os
 from datetime import datetime, timedelta
 
-# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
+# --- 1. CONFIG & CSS ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -22,19 +22,14 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-        /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
     div[data-testid="stTable"] {
         background-color: #0f172a;
         border-radius: 10px;
         border: 1px solid #1e293b;
         padding: 5px;
     }
-    div[data-testid="stTable"] table {
-        color: white !important;
-        width: 100% !important;
-    }
+    div[data-testid="stTable"] table { color: white !important; width: 100% !important; }
     
-    /* ΔΙΟΡΘΩΣΗ: ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: #f1f5f9 !important;
@@ -81,7 +76,6 @@ TEAMS = [
     {"n": "England", "g": "L"}, {"n": "Croatia", "g": "L"}, {"n": "Ghana", "g": "L"}, {"n": "Panama", "g": "L"}
 ]
 
-# --- 3. ΤΟ ΠΛΗΡΕΣ ΠΡΟΓΡΑΜΜΑ (72 ΑΓΩΝΕΣ) ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "Mexico", "South Africa"],
     ["A", "12/06 05:00", "Estadio Akron", "South Korea", "Czechia"],
@@ -157,8 +151,6 @@ RAW_MATCHES = [
     ["J", "28/06 05:00", "AT&T Stadium", "Jordan", "Argentina"]
 ]
 
-GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
-
 # --- 4. SESSION STATE INITIALIZATION ---
 if 'wc_matches' not in st.session_state:
     matches = []
@@ -190,7 +182,6 @@ def reset():
     st.cache_data.clear()
     st.rerun()
 
-# Συναρτήση για AI (Με Caching για αποφυγή 429)
 @st.cache_data(ttl=3600)
 def get_ai_prediction(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -220,7 +211,7 @@ with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ", on_click=auto_play, t
 with b2: st.button("🔄 RESET TOURNAMENT", on_click=reset, type="secondary")
 
 # --- 7. TABS ---
-t1, t2, t3 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
+t1, t2, t3, t4 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
 with t1:
     cols = st.columns(3)
@@ -237,10 +228,6 @@ with t1:
                     <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
                     <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['a']}</div>
                 </div>
-                <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
-                    🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
-                </div>
-                <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία"):
@@ -260,10 +247,12 @@ with t1:
                     st.rerun()
 
 with t2:
+    GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
     cols_s = st.columns(3)
     for i, gId in enumerate(GROUPS_L):
         with cols_s[i % 3]:
             st.markdown(f"#### Group {gId}")
+            # Get teams list for current group
             g_teams = sorted(list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId])))
             res = []
             for t in g_teams:
@@ -282,7 +271,80 @@ with t2:
                 res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
             st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
+# --- TAB: ΠΟΡΕΙΑ ΟΜΑΔΩΝ ---
 with t3:
+    st.markdown("### 📈 Ανάλυση Πορείας Ομάδων")
+    team_list = sorted(list(set([t['n'] for t in TEAMS])))
+    selected_team = st.selectbox("Επίλεξε Ομάδα για να δεις τι έκανε σε κάθε αγώνα:", team_list)
+    
+    team_matches = [m for m in st.session_state.wc_matches if (m['h'] == selected_team or m['a'] == selected_team)]
+    team_matches = sorted(team_matches, key=lambda x: x['id'])
+    
+    # Μετρητές για το συγκεντρωτικό πινακάκι
+    t_pts, t_gf, t_ga, t_y, t_r, t_p, t_og = 0, 0, 0, 0, 0, 0, 0
+    
+    for m in team_matches:
+        if m['fin']:
+            is_home = m['h'] == selected_team
+            goals = m['sh'] if is_home else m['sa']
+            conceded = m['sa'] if is_home else m['sh']
+            t_gf += goals
+            t_ga += conceded
+            t_y += m['y_h'] if is_home else m['y_a']
+            t_r += m['r_h'] if is_home else m['r_a']
+            t_p += m['p_h'] if is_home else m['p_a']
+            t_og += m['og_h'] if is_home else m['og_a']
+            if goals > conceded: t_pts += 3
+            elif goals == conceded: t_pts += 1
+
+    # Εμφάνιση Συγκεντρωτικών Stats
+    st.markdown(f"#### Συνολικά Στατιστικά για: {selected_team}")
+    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+    s_col1.metric("Βαθμοί", t_pts)
+    s_col2.metric("Γκολ (Υπέρ-Κατά)", f"{t_gf}-{t_ga}")
+    s_col3.metric("Κάρτες (Y-R)", f"{t_y}-{t_r}")
+    s_col4.metric("Πέναλτι / OG", f"{t_p} / {t_og}")
+    
+    st.write("---")
+    
+    cols_team = st.columns(3)
+    for idx, m in enumerate(team_matches):
+        with cols_team[idx % 3]:
+            match_title = f"{idx + 1}ος Αγώνας"
+            if m['fin']:
+                is_home = m['h'] == selected_team
+                my_goals = m['sh'] if is_home else m['sa']
+                opp_goals = m['sa'] if is_home else m['sh']
+                my_yellow = m['y_h'] if is_home else m['y_a']
+                my_red = m['r_h'] if is_home else m['r_a']
+                
+                if my_goals > opp_goals: res_txt, res_col = "ΝΙΚΗ ✅", "#10b981"
+                elif my_goals < opp_goals: res_txt, res_col = "ΗΤΤΑ ❌", "#ef4444"
+                else: res_txt, res_col = "ΙΣΟΠΑΛΙΑ 🤝", "#f59e0b"
+                
+                st.markdown(f"""
+                <div class="match-card" style="border-top: 4px solid {res_col};">
+                    <div style="color:#06b6d4; font-weight:bold; font-size:12px;">{match_title}</div>
+                    <div style="font-size:14px; margin:10px 0;">
+                        <b>{m['h']} {m['sh']} - {m['sa']} {m['a']}</b>
+                    </div>
+                    <div style="color:{res_col}; font-weight:bold; font-size:14px;">{res_txt}</div>
+                    <hr style="margin:8px 0; border-color:#1e293b;">
+                    <div style="font-size:11px; color:#94a3b8;">
+                        ⚽ Γκολ: {my_goals} | 🟨 {my_yellow} | 🟥 {my_red}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="match-card">
+                    <div style="color:#94a3b8; font-weight:bold; font-size:12px;">{match_title}</div>
+                    <div style="font-size:13px; margin:10px 0;">Εκκρεμεί: {m['h']} vs {m['a']}</div>
+                    <div style="font-size:11px; color:#58a6ff;">📅 {m['dt']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+with t4:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
@@ -291,10 +353,10 @@ with t3:
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
             
-            all_t = sorted(list(set([t['n'] for t in TEAMS])))
+            all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
-            h_t = c1.selectbox("Home Team", all_t, key="sel_h")
-            a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
+            h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
+            a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
@@ -302,36 +364,17 @@ with t3:
                     advanced_prompt = f"""
                     Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
                     Αναλύεις τον αγώνα Μουντιάλ 2026: {h_t} εναντίον {a_t}.
-
                     ΚΡΙΣΙΜΗ ΟΔΗΓΙΑ: Αναλύεις το παιχνίδι που κατέχει τη θέση #{match_number} στο επίσημο πρόγραμμα της FIFA (συνολικά 104 αγώνες).
-
                     ΠΡΕΠΕΙ να βρεις μέσω αναζήτησης ποιοι ακριβώς ήταν οι αγώνες με αύξοντα αριθμό #{match_number} στα προηγούμενα Μουντιάλ:
                     - Στο Μουντιάλ 2022, ο αγώνας #5 ήταν το Αργεντινή - Σαουδική Αραβία. (Παράδειγμα)
                     - Στο Μουντιάλ 2018, ο αγώνας #5 ήταν το Γαλλία - Αυστραλία. (Παράδειγμα)
                     - Στο Μουντιάλ 2014, ο αγώνας #5 ήταν το Κολομβία - Ελλάδα. (Παράδειγμα)
 
-                    Αν ο χρήστης ζητήσει άλλο νούμερο (π.χ. #{match_number}), βρες ποιοι ήταν οι αντίστοιχοι N-οστοί αγώνες στη σειρά. 
-                    ΜΗΝ μπερδεύεις τη μέρα με τον αριθμό του αγώνα.
-
                     Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
                     ## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-                    
                     ### 📊 Πρόσφατη Φόρμα (Τελευταίοι 10 Αγώνες)
-                    - Ανάλυση πραγματικών πρόσφατων αποτελεσμάτων για {h_t} και {a_t}.
-
                     ### 🏟️ Το Ιστορικό Μοτίβο του Αγώνα #{match_number}
-                    - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα της διοργάνωσης; (2022, 2018, 2014).
-                    - Υπάρχει τάση για εκπλήξεις ή πολλά γκολ σε αυτό το "slot";
-
-                    ### 🔮 Πρόβλεψη Σκορ & Στατιστικές Πιθανότητες
-                    | Κατηγορία | Πρόβλεψη | Πιθανότητα |
-                    |-----------|----------|------------|
-                    | Αποτέλεσμα | {h_t} / Ισοπαλία / {a_t} | XX% |
-                    | Προβλεπόμενο Σκορ | X - X | — |
-                    | Ανατροπή στο Σκορ | Ναι / Όχι | XX% |
-                    | Πέναλτι | Ναι / Όχι | XX% |
-                    | Κόκκινη Κάρτα | Ναι / Όχι | XX% |
-
+                    ### 🔮 Πρόβλεψη Σκορ & Πιθανότητες
                     ### 🎯 Σύντομο Τακτικό Συμπέρασμα
                     """
                     try:
