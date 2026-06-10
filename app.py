@@ -12,8 +12,6 @@ st.markdown("""
     <style>
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-    
-    /* Λευκά γράμματα παντού */
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     
     .stat-card {
@@ -24,17 +22,19 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    
-    /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
+        /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
     div[data-testid="stTable"] {
         background-color: #0f172a;
         border-radius: 10px;
         border: 1px solid #1e293b;
         padding: 5px;
     }
-    div[data-testid="stTable"] table { color: white !important; width: 100% !important; }
+    div[data-testid="stTable"] table {
+        color: white !important;
+        width: 100% !important;
+    }
     
-    /* RESET BUTTON: ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ ΣΕ ΛΕΥΚΟ ΦΟΝΤΟ */
+    /* ΔΙΟΡΘΩΣΗ: ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: #f1f5f9 !important;
@@ -56,7 +56,6 @@ st.markdown("""
     .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
-    /* AUTO-PLAY BUTTON */
     button[data-testid="stBaseButton-primary"] {
         background-color: #ef4444 !important;
         color: white !important;
@@ -160,7 +159,7 @@ RAW_MATCHES = [
 
 GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
-# --- 4. SESSION STATE ---
+# --- 4. SESSION STATE INITIALIZATION ---
 if 'wc_matches' not in st.session_state:
     matches = []
     for i, m_data in enumerate(RAW_MATCHES):
@@ -191,22 +190,29 @@ def reset():
     st.cache_data.clear()
     st.rerun()
 
+# Συναρτήση για AI (Με Caching για αποφυγή 429)
 @st.cache_data(ttl=3600)
 def get_ai_prediction(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel(model_id)
     return model.generate_content(prompt).text
 
-# --- 6. HEADER ---
+# --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
+
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
+total_y = sum(m['y_h'] + m['y_a'] for m in fin_m)
+total_r = sum(m['r_h'] + m['r_a'] for m in fin_m)
+total_p = sum(m['p_h'] + m['p_a'] for m in fin_m)
+total_og = sum(m['og_h'] + m['og_a'] for m in fin_m)
+
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
 with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["sh"]+m["sa"] for m in fin_m if m["sh"] is not None)}</div><div class="stat-label">⚽Goals</div></div>', unsafe_allow_html=True)
-with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{sum(m["y_h"]+m["y_a"] for m in fin_m)}</div><div class="stat-label">🟨Yellow</div></div>', unsafe_allow_html=True)
-with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{sum(m["r_h"]+m["r_a"] for m in fin_m)}</div><div class="stat-label">🟥Red</div></div>', unsafe_allow_html=True)
-with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{sum(m["p_h"]+m["p_a"] for m in fin_m)}</div><div class="stat-label">🎯Pens</div></div>', unsafe_allow_html=True)
-with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{sum(m["og_h"]+m["og_a"] for m in fin_m)}</div><div class="stat-label">⚠️OG</div></div>', unsafe_allow_html=True)
+with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{total_y}</div><div class="stat-label">🟨Yellow</div></div>', unsafe_allow_html=True)
+with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{total_r}</div><div class="stat-label">🟥Red</div></div>', unsafe_allow_html=True)
+with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{total_p}</div><div class="stat-label">🎯Pens</div></div>', unsafe_allow_html=True)
+with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{total_og}</div><div class="stat-label">⚠️OG</div></div>', unsafe_allow_html=True)
 
 st.write("")
 b1, b2 = st.columns([2, 1])
@@ -285,30 +291,17 @@ with t3:
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
             
-            all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
+            all_t = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
-            h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
-            a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
+            h_t = c1.selectbox("Home Team", all_t, key="sel_h")
+            a_t = c2.selectbox("Away Team", all_t, index=1, key="sel_a")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
                     advanced_prompt = f"""
-                                        Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
-                    Κάνε μια βαθιά, επαγγελματική και τεχνική ανάλυση για τον αγώνα του Μουντιάλ 2026: {h_t} εναντίον {a_t}.
-
-                    Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται στα εξής πραγματικά στοιχεία:
-                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας): Ανακάλεσε τα πρόσφατα αποτελέσματά τους, τη δυναμική τους στην επίθεση και την άμυνα.
-                    2. Προϊστορία σε Μουντιάλ: Τι συνέβη σε προηγούμενες αναμετρήσεις τους σε τελικές φάσεις Παγκοσμίου Κυπέλλου (αν υπάρχουν) ή γενικότερη προϊστορία.
-                    3. Τακτική Προσέγγιση: Πώς επηρεάζει το στυλ παιχνιδιού τους το τελικό αποτέλεσμα.
-
-                    Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
-                    - 📊 **Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)**
-                    - 📜 **Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά**
-                    - 🔮 **Πρόβλεψη Σκορ & Πιθανότητες Καρτών / Κόρνερ**
-                    - 🎯 **Σύντομο Τακτικό Συμπέρασμα**
-
-
+                    Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
+                    Αναλύεις τον αγώνα Μουντιάλ 2026: {h_t} εναντίον {a_t}.
 
                     ΚΡΙΣΙΜΗ ΟΔΗΓΙΑ: Αναλύεις το παιχνίδι που κατέχει τη θέση #{match_number} στο επίσημο πρόγραμμα της FIFA (συνολικά 104 αγώνες).
 
@@ -330,11 +323,14 @@ with t3:
                     - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα της διοργάνωσης; (2022, 2018, 2014).
                     - Υπάρχει τάση για εκπλήξεις ή πολλά γκολ σε αυτό το "slot";
 
-                    ### 🔮 Πρόβλεψη Σκορ & Πιθανότητες
+                    ### 🔮 Πρόβλεψη Σκορ & Στατιστικές Πιθανότητες
                     | Κατηγορία | Πρόβλεψη | Πιθανότητα |
                     |-----------|----------|------------|
                     | Αποτέλεσμα | {h_t} / Ισοπαλία / {a_t} | XX% |
                     | Προβλεπόμενο Σκορ | X - X | — |
+                    | Ανατροπή στο Σκορ | Ναι / Όχι | XX% |
+                    | Πέναλτι | Ναι / Όχι | XX% |
+                    | Κόκκινη Κάρτα | Ναι / Όχι | XX% |
 
                     ### 🎯 Σύντομο Τακτικό Συμπέρασμα
                     """
