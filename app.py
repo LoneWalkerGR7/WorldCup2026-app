@@ -271,7 +271,7 @@ with t2:
 
 # Προσθήκη αυτής της συνάρτησης ΠΡΙΝ το tab3 για να έχει μνήμη η AI
 @st.cache_data(ttl=3600) # Κρατάει την πρόβλεψη στη μνήμη για 1 ώρα
-def get_ai_prediction(model_id, prompt):
+def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel(model_id)
     return model.generate_content(prompt).text
