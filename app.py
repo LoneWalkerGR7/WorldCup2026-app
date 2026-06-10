@@ -5,7 +5,7 @@ import google.generativeai as genai
 import os
 from datetime import datetime, timedelta
 
-# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
+# --- 1. CONFIG & CSS ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -22,19 +22,14 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-        /* ΣΤΟΙΧΙΣΗ ΠΙΝΑΚΩΝ ΒΑΘΜΟΛΟΓΙΑΣ */
     div[data-testid="stTable"] {
         background-color: #0f172a;
         border-radius: 10px;
         border: 1px solid #1e293b;
         padding: 5px;
     }
-    div[data-testid="stTable"] table {
-        color: white !important;
-        width: 100% !important;
-    }
+    div[data-testid="stTable"] table { color: white !important; width: 100% !important; }
     
-    /* ΔΙΟΡΘΩΣΗ: ΚΟΥΜΠΙ RESET ΜΕ ΜΑΥΡΑ ΓΡΑΜΜΑΤΑ */
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
         background-color: #f1f5f9 !important;
@@ -56,18 +51,16 @@ st.markdown("""
     .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
-    button[data-testid="stBaseButton-secondary"] {
-        color: black !important;
-        background-color: white !important;
-        font-weight: 800 !important;
+    button[data-testid="stBaseButton-primary"] {
+        background-color: #ef4444 !important;
+        color: white !important;
         border: none !important;
+        font-weight: 800 !important;
     }
-    
-    div[data-testid="stTable"] table { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
+# --- 2. ΔΕΔΟΜΕΝΑ ---
 TEAMS = [
     {"n": "Mexico", "g": "A"}, {"n": "South Africa", "g": "A"}, {"n": "South Korea", "g": "A"}, {"n": "Czechia", "g": "A"},
     {"n": "Canada", "g": "B"}, {"n": "Bosnia and Herzegovina", "g": "B"}, {"n": "Qatar", "g": "B"}, {"n": "Switzerland", "g": "B"},
@@ -83,7 +76,6 @@ TEAMS = [
     {"n": "England", "g": "L"}, {"n": "Croatia", "g": "L"}, {"n": "Ghana", "g": "L"}, {"n": "Panama", "g": "L"}
 ]
 
-# --- 3. ΤΟ ΠΛΗΡΕΣ ΠΡΟΓΡΑΜΜΑ (72 ΑΓΩΝΕΣ) ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "Mexico", "South Africa"],
     ["A", "12/06 05:00", "Estadio Akron", "South Korea", "Czechia"],
@@ -159,7 +151,7 @@ RAW_MATCHES = [
     ["J", "28/06 05:00", "AT&T Stadium", "Jordan", "Argentina"]
 ]
 
-# --- 4. SESSION STATE INITIALIZATION ---
+# --- 3. SESSION STATE ---
 if 'wc_matches' not in st.session_state:
     matches = []
     for i, m_data in enumerate(RAW_MATCHES):
@@ -170,7 +162,7 @@ if 'wc_matches' not in st.session_state:
         })
     st.session_state.wc_matches = matches
 
-# --- 5. FUNCTIONS ---
+# --- 4. FUNCTIONS ---
 def auto_play():
     for m in st.session_state.wc_matches:
         if not m['fin']:
@@ -189,36 +181,29 @@ def reset():
     if 'wc_matches' in st.session_state: del st.session_state['wc_matches']
     st.rerun()
 
-# Συναρτήση για AI (Με Caching για αποφυγή 429)
 @st.cache_data(ttl=3600)
-def get_ai_prediction(model_id, prompt):
+def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel(model_id)
     return model.generate_content(prompt).text
 
-# --- 6. HEADER & DASHBOARD ---
+# --- 5. HEADER ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
-
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
-total_y = sum(m['y_h'] + m['y_a'] for m in fin_m)
-total_r = sum(m['r_h'] + m['r_a'] for m in fin_m)
-total_p = sum(m['p_h'] + m['p_a'] for m in fin_m)
-total_og = sum(m['og_h'] + m['og_a'] for m in fin_m)
-
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
 with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["sh"]+m["sa"] for m in fin_m)}</div><div class="stat-label">⚽Goals</div></div>', unsafe_allow_html=True)
-with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{total_y}</div><div class="stat-label">🟨Yellow Cards</div></div>', unsafe_allow_html=True)
-with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{total_r}</div><div class="stat-label">🟥Red Cards</div></div>', unsafe_allow_html=True)
-with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{total_p}</div><div class="stat-label">🎯Penalties</div></div>', unsafe_allow_html=True)
-with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{total_og}</div><div class="stat-label">⚠️Own Goals</div></div>', unsafe_allow_html=True)
+with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{sum(m["y_h"]+m["y_a"] for m in fin_m)}</div><div class="stat-label">🟨Yellow</div></div>', unsafe_allow_html=True)
+with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{sum(m["r_h"]+m["r_a"] for m in fin_m)}</div><div class="stat-label">🟥Red</div></div>', unsafe_allow_html=True)
+with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{sum(m["p_h"]+m["p_a"] for m in fin_m)}</div><div class="stat-label">🎯Pens</div></div>', unsafe_allow_html=True)
+with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#fb923c!important">{sum(m["og_h"]+m["og_a"] for m in fin_m)}</div><div class="stat-label">⚠️OG</div></div>', unsafe_allow_html=True)
 
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ", on_click=auto_play, type="primary")
 with b2: st.button("🔄 RESET TOURNAMENT", on_click=reset, type="secondary")
 
-# --- 7. TABS ---
+# --- 6. TABS ---
 t1, t2, t3 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
 with t1:
@@ -242,20 +227,16 @@ with t1:
                 <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
-            with st.expander("✏️ Επεξεργασία Παιχνιδιού"):
-                colh, cola = st.columns(2)
-                sh_val = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa_val = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh_val = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya_val = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh_val = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
-                ra_val = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
-                ph_val = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa_val = cola.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh_val = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_val = cola.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
-                if st.button("Save Stats", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_val, "sa": sa_val, "fin": True, "y_h": yh_val, "y_a": ya_val, "r_h": int(rh_val), "r_a": int(ra_val), "p_h": ph_val, "p_a": pa_val, "og_h": oh_val, "og_a": oa_val})
+            with st.expander("✏️ Επεξεργασία"):
+                ch, ca = st.columns(2)
+                sh_v = ch.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_v = ca.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_v = ch.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_v = ca.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh_v = ch.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
+                ra_v = ca.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
+                if st.button("Save Result", key=f"btn{m['id']}"):
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": int(rh_v), "r_a": int(ra_v)})
                     st.rerun()
 
 with t2:
@@ -264,8 +245,7 @@ with t2:
     for i, gId in enumerate(GROUPS_L):
         with cols_s[i % 3]:
             st.markdown(f"#### Group {gId}")
-            # Get teams list for current group
-            g_teams = list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId]))
+            g_teams = sorted(list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId])))
             res = []
             for t in g_teams:
                 pts, gd, y, r, p, og = 0, 0, 0, 0, 0, 0
@@ -281,8 +261,7 @@ with t2:
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
                 res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
-            df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
-            st.table(df)
+            st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
 
 with t3:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
@@ -298,104 +277,33 @@ with t3:
             h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
             a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
             
+            # ΠΡΟΣΘΗΚΗ ΤΟΥ ΜΕΤΑΒΛΗΤΗΣ match_number ΠΟΥ ΕΛΕΙΠΕ
+            match_no = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
+            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
                     advanced_prompt = f"""
-                    You are a top football analyst and statistician specializing in the FIFA World Cup.
+                    Είσαι ένας κορυφαίος αναλυτής ποδοσφαίρου και στατιστικολόγος με εξειδίκευση στο Παγκόσμιο Κύπελλο.
+                    Κάνε μια βαθιά, επαγγελματική και τεχνική ανάλυση για τον αγώνα του Μουντιάλ 2026: {h_t} εναντίον {a_t}.
 
-The user will provide:
-- {h_t} = Home Team
-- {a_t} = Away Team  
-- {match_number} = The sequential match number in the World Cup 2026 schedule (e.g. 8th match, 24th match)
+                    Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται στα εξής πραγματικά στοιχεία:
+                    1. Πρόσφατη Φόρμα (Τελευταίοι 10 επίσημοι αγώνες της κάθε ομάδας).
+                    2. Προϊστορία σε Μουντιάλ.
+                    3. Τακτική Προσέγγιση.
+                    4. Ιστορικό αγώνα #{match_no} σε προηγούμενα Μουντιάλ.
 
-**STEP 1 — WEB SEARCH (Mandatory before writing anything):**
-Search the web for the following real data:
-
-1. Last 10 official matches for {h_t} and {a_t} (results, goals scored/conceded)
-2. World Cup history for both teams (titles, best results, head-to-head in WCs)
-3. Tactical setup of both teams in their most recent matches (formation, pressing style, key players)
-4. **Historical match at position #{match_number}** in previous World Cups (2022, 2018, 2014):
-   - Find which match was #{match_number} in the official schedule of each of those tournaments
-   - Report the exact score, teams, and any notable stats (cards, corners, goals timing)
-   - Identify any patterns (e.g. "The Nth match tends to produce X goals on average")
-
-**STEP 2 — WRITE THE ANALYSIS in Greek, using Markdown:**
-
----
-
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-
-### 📊 Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)
-
-**{h_t}:**
-- Λίστα με αποτελέσματα, γκολ, φόρμα (Ν/Ι/Η)
-- Μέσος όρος γκολ per game (scored / conceded)
-- Τάσεις (π.χ. over/under, clean sheets, BTTS)
-
-**{a_t}:**
-- Ίδια δομή
-
----
-
-### 📜 Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά
-
-- Ιστορικές επιδόσεις κάθε ομάδας σε Μουντιάλ
-- Αμεσα head-to-head σε Μουντιάλ (αν υπάρχουν)
-- Αξιοσημείωτες παρουσίες / απουσίες
-
----
-
-### 🏟️ Ιστορικό Παιχνίδι #{match_number} σε Προηγούμενα Μουντιάλ
-
-> "Τι βγήκε ιστορικά στον αγώνα #{match_number} της επίσημης σειράς;"
-
-- **Μουντιάλ 2022:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | Κάρτες: X | Κόρνερ: X
-- **Μουντιάλ 2018:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | ...
-- **Μουντιάλ 2014:** Αγώνας #{match_number} → [Ομάδα Α vs Ομάδα Β] | Σκορ: X-X | ...
-- **Μοτίβο / Συμπέρασμα:** Μέσος όρος γκολ, τάση για over/under, συχνότητα καρτών κτλ.
-
----
-
-### 🔮 Πρόβλεψη Σκορ & Στατιστικές Πιθανότητες
-
-| Κατηγορία | Πρόβλεψη | Πιθανότητα |
-|-----------|----------|------------|
-| Αποτέλεσμα | {h_t} / Ισοπαλία / {a_t} | XX% / XX% / XX% |
-| Προβλεπόμενο Σκορ | X - X | — |
-| Over 2.5 Goals | Ναι / Όχι | XX% |
-| BTTS (Και οι δύο να σκοράρουν) | Ναι / Όχι | XX% |
-| Κόρνερ Over 9.5 | Ναι / Όχι | XX% |
-| Κίτρινες Κάρτες Over 3.5 | Ναι / Όχι | XX% |
-| Πέναλτι | Ναι / Όχι | XX% |
-| Αυτογκόλ | Ναι / Όχι | XX% |
-| Ανατροπή στο Σκορ | Ναι / Όχι | XX% |
-
----
-
-### 🎯 Σύντομο Τακτικό Συμπέρασμα
-
-- Ποια ομάδα έχει τακτικό πλεονέκτημα και γιατί
-- Key matchup που θα κρίνει τον αγώνα
-- Η τελική σύσταση με 2-3 προτεινόμενα στοιχήματα (value bets)
-
----
-
-**ΚΑΝΟΝΕΣ:**
-- Όλη η απάντηση ΜΟΝΟ στα Ελληνικά
-- Χρησιμοποίησε ΜΟΝΟ πραγματικά δεδομένα από το web search
-- Αν δεν βρεις δεδομένα για κάποιο σημείο, γράψε "Δεν βρέθηκαν διαθέσιμα δεδομένα" — ΜΗΝ εφευρίσκεις στατιστικά
-- Το ιστορικό section του αγώνα #{match_number} είναι ΥΠΟΧΡΕΩΤΙΚΟ να συμπληρωθεί με αναζήτηση**
+                    Επίστρεψε την απάντηση αποκλειστικά στα Ελληνικά, χρησιμοποιώντας Markdown (bold, lists) για εύκολη ανάγνωση, με τις εξής ενότητες:
+                    - 📊 **Πρόσφατη Φόρμα & Στατιστικά (Τελευταίοι 10 Αγώνες)**
+                    - 📜 **Προϊστορία σε Μουντιάλ & Μεγάλα Τουρνουά**
+                    - 🔮 **Πρόβλεψη Σκορ & Πιθανότητες Καρτών / Κόρνερ**
+                    - 🎯 **Σύντομο Τακτικό Συμπέρασμα**
                     """
                     try:
                         result_text = Μετράω_τα_κουκιά(working_model, advanced_prompt)
                         st.markdown("---")
                         st.markdown(result_text)
                     except Exception as e:
-                        if "429" in str(e):
-                            st.error("🚨 Το όριο της Google εξαντλήθηκε. Δοκιμάστε ξανά σε 2-3 λεπτά.")
-                        else:
-                            st.error(f"Σφάλμα: {e}")
-        except Exception as e:
-            st.error(f"Σφάλμα σύνδεσης: {e}")
-    else:
-        st.warning("Προσθέστε το GEMINI_API_KEY στα Secrets.")
+                        if "429" in str(e): st.error("🚨 Όριο Google! Περίμενε 2 λεπτά.")
+                        else: st.error(f"Σφάλμα: {e}")
+        except Exception as e: st.error(f"Σφάλμα σύνδεσης: {e}")
+    else: st.warning("Add API Key.")
