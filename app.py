@@ -60,59 +60,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ (Mapping IDs 1-48) ---
+# --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ (ΠΛΗΡΕΣ MAPPING) ---
 TEAMS_MAP = {
-    "1": {"n": "Mexico", "img": "https://flagcdn.com/w80/mx.png", "g": "A"},
-    "2": {"n": "South Africa", "img": "https://flagcdn.com/w80/za.png", "g": "A"},
-    "3": {"n": "South Korea", "img": "https://flagcdn.com/w80/kr.png", "g": "A"},
-    "4": {"n": "Czechia", "img": "https://flagcdn.com/w80/cz.png", "g": "A"},
-    "5": {"n": "Canada", "img": "https://flagcdn.com/w80/ca.png", "g": "B"},
-    "6": {"n": "Bosnia", "img": "https://flagcdn.com/w80/ba.png", "g": "B"},
-    "7": {"n": "Qatar", "img": "https://flagcdn.com/w80/qa.png", "g": "B"},
-    "8": {"n": "Switzerland", "img": "https://flagcdn.com/w80/ch.png", "g": "B"},
-    "9": {"n": "Brazil", "img": "https://flagcdn.com/w80/br.png", "g": "C"},
-    "10": {"n": "Morocco", "img": "https://flagcdn.com/w80/ma.png", "g": "C"},
-    "11": {"n": "Haiti", "img": "https://flagcdn.com/w80/ht.png", "g": "C"},
-    "12": {"n": "Scotland", "img": "https://flagcdn.com/w80/gb-sct.png", "g": "C"},
-    "13": {"n": "USA", "img": "https://flagcdn.com/w80/us.png", "g": "D"},
-    "14": {"n": "Paraguay", "img": "https://flagcdn.com/w80/py.png", "g": "D"},
-    "15": {"n": "Australia", "img": "https://flagcdn.com/w80/au.png", "g": "D"},
-    "16": {"n": "Turkey", "img": "https://flagcdn.com/w80/tr.png", "g": "D"},
-    "17": {"n": "Germany", "img": "https://flagcdn.com/w80/de.png", "g": "E"},
-    "18": {"n": "Curacao", "img": "https://flagcdn.com/w80/cw.png", "g": "E"},
-    "19": {"n": "Ivory Coast", "img": "https://flagcdn.com/w80/ci.png", "g": "E"},
-    "20": {"n": "Ecuador", "img": "https://flagcdn.com/w80/ec.png", "g": "E"},
-    "21": {"n": "Netherlands", "img": "https://flagcdn.com/w80/nl.png", "g": "F"},
-    "22": {"n": "Japan", "img": "https://flagcdn.com/w80/jp.png", "g": "F"},
-    "23": {"n": "Sweden", "img": "https://flagcdn.com/w80/se.png", "g": "F"},
-    "24": {"n": "Tunisia", "img": "https://flagcdn.com/w80/tn.png", "g": "F"},
-    "25": {"n": "Belgium", "img": "https://flagcdn.com/w80/be.png", "g": "G"},
-    "26": {"n": "Egypt", "img": "https://flagcdn.com/w80/eg.png", "g": "G"},
-    "27": {"n": "Iran", "img": "https://flagcdn.com/w80/ir.png", "g": "G"},
-    "28": {"n": "New Zealand", "img": "https://flagcdn.com/w80/nz.png", "g": "G"},
-    "29": {"n": "Spain", "img": "https://flagcdn.com/w80/es.png", "g": "H"},
-    "30": {"n": "Cape Verde", "img": "https://flagcdn.com/w80/cv.png", "g": "H"},
-    "31": {"n": "Saudi Arabia", "img": "https://flagcdn.com/w80/sa.png", "g": "H"},
-    "32": {"n": "Uruguay", "img": "https://flagcdn.com/w80/uy.png", "g": "H"},
-    "33": {"n": "France", "img": "https://flagcdn.com/w80/fr.png", "g": "I"},
-    "34": {"n": "Senegal", "img": "https://flagcdn.com/w80/sn.png", "g": "I"},
-    "35": {"n": "Iraq", "img": "https://flagcdn.com/w80/iq.png", "g": "I"},
-    "36": {"n": "Norway", "img": "https://flagcdn.com/w80/no.png", "g": "I"},
-    "37": {"n": "Argentina", "img": "https://flagcdn.com/w80/ar.png", "g": "J"},
-    "38": {"n": "Algeria", "img": "https://flagcdn.com/w80/dz.png", "g": "J"},
-    "39": {"n": "Austria", "img": "https://flagcdn.com/w80/at.png", "g": "J"},
-    "40": {"n": "Jordan", "img": "https://flagcdn.com/w80/jo.png", "g": "J"},
-    "41": {"n": "Portugal", "img": "https://flagcdn.com/w80/pt.png", "g": "K"},
-    "42": {"n": "DR Congo", "img": "https://flagcdn.com/w80/cd.png", "g": "K"},
-    "43": {"n": "Uzbekistan", "img": "https://flagcdn.com/w80/uz.png", "g": "K"},
-    "44": {"n": "Colombia", "img": "https://flagcdn.com/w80/co.png", "g": "K"},
-    "45": {"n": "England", "img": "https://flagcdn.com/w80/gb-eng.png", "g": "L"},
-    "46": {"n": "Croatia", "img": "https://flagcdn.com/w80/hr.png", "g": "L"},
-    "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"},
-    "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
+    "1": {"n": "Mexico", "img": "https://flagcdn.com/w80/mx.png", "g": "A"}, "2": {"n": "South Africa", "img": "https://flagcdn.com/w80/za.png", "g": "A"},
+    "3": {"n": "South Korea", "img": "https://flagcdn.com/w80/kr.png", "g": "A"}, "4": {"n": "Czechia", "img": "https://flagcdn.com/w80/cz.png", "g": "A"},
+    "5": {"n": "Canada", "img": "https://flagcdn.com/w80/ca.png", "g": "B"}, "6": {"n": "Bosnia", "img": "https://flagcdn.com/w80/ba.png", "g": "B"},
+    "7": {"n": "Qatar", "img": "https://flagcdn.com/w80/qa.png", "g": "B"}, "8": {"n": "Switzerland", "img": "https://flagcdn.com/w80/ch.png", "g": "B"},
+    "9": {"n": "Brazil", "img": "https://flagcdn.com/w80/br.png", "g": "C"}, "10": {"n": "Morocco", "img": "https://flagcdn.com/w80/ma.png", "g": "C"},
+    "11": {"n": "Haiti", "img": "https://flagcdn.com/w80/ht.png", "g": "C"}, "12": {"n": "Scotland", "img": "https://flagcdn.com/w80/gb-sct.png", "g": "C"},
+    "13": {"n": "USA", "img": "https://flagcdn.com/w80/us.png", "g": "D"}, "14": {"n": "Paraguay", "img": "https://flagcdn.com/w80/py.png", "g": "D"},
+    "15": {"n": "Australia", "img": "https://flagcdn.com/w80/au.png", "g": "D"}, "16": {"n": "Turkey", "img": "https://flagcdn.com/w80/tr.png", "g": "D"},
+    "17": {"n": "Germany", "img": "https://flagcdn.com/w80/de.png", "g": "E"}, "18": {"n": "Curacao", "img": "https://flagcdn.com/w80/cw.png", "g": "E"},
+    "19": {"n": "Ivory Coast", "img": "https://flagcdn.com/w80/ci.png", "g": "E"}, "20": {"n": "Ecuador", "img": "https://flagcdn.com/w80/ec.png", "g": "E"},
+    "21": {"n": "Netherlands", "img": "https://flagcdn.com/w80/nl.png", "g": "F"}, "22": {"n": "Japan", "img": "https://flagcdn.com/w80/jp.png", "g": "F"},
+    "23": {"n": "Sweden", "img": "https://flagcdn.com/w80/se.png", "g": "F"}, "24": {"n": "Tunisia", "img": "https://flagcdn.com/w80/tn.png", "g": "F"},
+    "25": {"n": "Belgium", "img": "https://flagcdn.com/w80/be.png", "g": "G"}, "26": {"n": "Egypt", "img": "https://flagcdn.com/w80/eg.png", "g": "G"},
+    "27": {"n": "Iran", "img": "https://flagcdn.com/w80/ir.png", "g": "G"}, "28": {"n": "New Zealand", "img": "https://flagcdn.com/w80/nz.png", "g": "G"},
+    "29": {"n": "Spain", "img": "https://flagcdn.com/w80/es.png", "g": "H"}, "30": {"n": "Cape Verde", "img": "https://flagcdn.com/w80/cv.png", "g": "H"},
+    "31": {"n": "Saudi Arabia", "img": "https://flagcdn.com/w80/sa.png", "g": "H"}, "32": {"n": "Uruguay", "img": "https://flagcdn.com/w80/uy.png", "g": "H"},
+    "33": {"n": "France", "img": "https://flagcdn.com/w80/fr.png", "g": "I"}, "34": {"n": "Senegal", "img": "https://flagcdn.com/w80/sn.png", "g": "I"},
+    "35": {"n": "Iraq", "img": "https://flagcdn.com/w80/iq.png", "g": "I"}, "36": {"n": "Norway", "img": "https://flagcdn.com/w80/no.png", "g": "I"},
+    "37": {"n": "Argentina", "img": "https://flagcdn.com/w80/ar.png", "g": "J"}, "38": {"n": "Algeria", "img": "https://flagcdn.com/w80/dz.png", "g": "J"},
+    "39": {"n": "Austria", "img": "https://flagcdn.com/w80/at.png", "g": "J"}, "40": {"n": "Jordan", "img": "https://flagcdn.com/w80/jo.png", "g": "J"},
+    "41": {"n": "Portugal", "img": "https://flagcdn.com/w80/pt.png", "g": "K"}, "42": {"n": "DR Congo", "img": "https://flagcdn.com/w80/cd.png", "g": "K"},
+    "43": {"n": "Uzbekistan", "img": "https://flagcdn.com/w80/uz.png", "g": "K"}, "44": {"n": "Colombia", "img": "https://flagcdn.com/w80/co.png", "g": "K"},
+    "45": {"n": "England", "img": "https://flagcdn.com/w80/gb-eng.png", "g": "L"}, "46": {"n": "Croatia", "img": "https://flagcdn.com/w80/hr.png", "g": "L"},
+    "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"}, "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
 }
 
-# --- 3. ΠΡΟΓΡΑΜΜΑ (ΒΑΣΕΙ ΦΩΤΟΓΡΑΦΙΑΣ) ---
+# --- 3. ΠΡΟΓΡΑΜΜΑ (72 ΑΓΩΝΕΣ) ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "1", "2"], ["A", "12/06 05:00", "Estadio Akron", "3", "4"],
     ["B", "12/06 22:00", "BMO Field", "5", "6"], ["D", "13/06 04:00", "SoFi Stadium", "13", "14"],
@@ -152,6 +128,7 @@ RAW_MATCHES = [
     ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"]
 ]
 
+GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 # --- 4. SESSION STATE INITIALIZATION ---
 if 'wc_matches' not in st.session_state:
     matches = []
