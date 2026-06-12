@@ -235,21 +235,21 @@ with t1:
             </div>
             """, unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία"):
-                colh, cola = st.columns(2)
-                sh_v = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa_v = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh_v = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya_v = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                ra_v = colh.number_input(f"Red {a['n']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
-                ra_v = colh.number_input(f"Red {a['n']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
-                ph_v = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa_v = colh.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh_v = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_v = colh.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                ch, ca = st.columns(2)
+                sh_v = ch.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_v = ca.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_v = ch.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_v = ca.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                # ΑΛΛΑΓΗ ΣΕ NUMBER_INPUT ΓΙΑ ΠΟΛΛΑΠΛΕΣ ΚΟΚΚΙΝΕΣ
+                rh_v = ch.number_input(f"Red {m['h']}", 0, 5, m['r_h'], key=f"rh{m['id']}")
+                ra_v = ca.number_input(f"Red {m['a']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
+                ph_v = ch.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa_v = ca.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh_v = ch.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa_v = ca.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": int(rh_v), "r_a": int(ra_v), "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v})
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v})
                     st.rerun()
-
 with t2:
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
     cols_s = st.columns(3)
