@@ -350,21 +350,62 @@ with t4:
         try:
             genai.configure(api_key=api_key)
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
-            
+            working_model = next((m for m in model_list if '1.5-flash' in m or '2.0-flash' in m), model_list[0])
+ 
             all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
             c1, c2 = st.columns(2)
             h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
             a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
-            match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
-            
-            # --- ΠΡΟΣΘΗΚΗ ΠΛΑΙΣΙΟΥ ΣΗΜΕΙΩΣΕΩΝ ---
-            extra_notes = st.text_area("🗒️ Πρόσθετες σημειώσεις τελευταίας στιγμής:", 
-                                      placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός, ο διαιτητής είναι πολύ αυστηρός...",
-                                      help="Αυτές οι σημειώσεις θα ληφθούν υπόψη από την AI για την πρόβλεψη.")
-            
+            match_number = st.number_input("Νούμερο Αγώνα (1-72):", 1, 72, 1)
+ 
+            # --- ΑΥΤΟΜΑΤΗ ΑΝΤΛΗΣΗ ΣΤΟΙΧΕΙΩΝ ΑΓΩΝΑ ---
+            # Βρες τον αγώνα από τη λίστα RAW_MATCHES βάσει αριθμού
+            match_idx = int(match_number) - 1
+            if 0 <= match_idx < len(RAW_MATCHES):
+                raw = RAW_MATCHES[match_idx]
+                match_group    = raw[0]
+                match_datetime = raw[1]
+                stadium        = raw[2]
+                auto_home      = raw[3]
+                auto_away      = raw[4]
+            else:
+                match_group    = "?"
+                match_datetime = "TBD"
+                stadium        = "TBD"
+                auto_home      = h_t
+                auto_away      = a_t
+ 
+            # Χάρτης σταδίων → πόλη (από τα RAW_MATCHES)
+            STADIUM_CITY = {
+                "Estadio Azteca": "Mexico City, Μεξικό (υψόμετρο 2.240m)",
+                "Estadio Akron": "Guadalajara, Μεξικό",
+                "Estadio BBVA": "Monterrey, Μεξικό",
+                "BMO Field": "Toronto, Καναδάς",
+                "BC Place": "Vancouver, Καναδάς",
+                "SoFi Stadium": "Los Angeles, ΗΠΑ",
+                "Levi's Stadium": "Santa Clara, ΗΠΑ",
+                "MetLife Stadium": "East Rutherford, ΗΠΑ",
+                "Gillette Stadium": "Foxborough, ΗΠΑ",
+                "NRG Stadium": "Houston, ΗΠΑ",
+                "AT&T Stadium": "Arlington (Dallas), ΗΠΑ",
+                "Lincoln Field": "Philadelphia, ΗΠΑ",
+                "Lumen Field": "Seattle, ΗΠΑ",
+                "Arrowhead": "Kansas City, ΗΠΑ",
+                "Hard Rock": "Miami, ΗΠΑ",
+                "Mercedes-Benz": "Atlanta, ΗΠΑ",
+            }
+            city = STADIUM_CITY.get(stadium, stadium)
+ 
+            # Εμφάνισε αυτόματα τα στοιχεία του αγώνα
+            st.info(f"📍 **{stadium}** · {city}  |  🕒 {match_datetime}  |  🏷️ Όμιλος {match_group}  |  {auto_home} vs {auto_away}")
+ 
+            extra_notes = st.text_area(
+                "🗒️ Πρόσθετες σημειώσεις τελευταίας στιγμής:",
+                placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός, ο διαιτητής είναι πολύ αυστηρός...",
+            )
+ 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
-                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
+                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει δεδομένα, φόρμα, τακτική..."):
                     advanced_prompt = f"""
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη.
