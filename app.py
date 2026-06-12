@@ -216,8 +216,6 @@ t1, t2, t3, t4 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ
 with t1:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
-        h = TEAMS_MAP.get(m['h_id'], {"n": "N/A", "img": ""})
-        a = TEAMS_MAP.get(m['a_id'], {"n": "N/A", "img": ""})
         with cols[idx % 3]:
             st.markdown(f"""
             <div class="match-card">
@@ -225,30 +223,31 @@ with t1:
                     <span class="group-tag">GROUP {m['group']}</span>
                     <span style="font-size:10px; color:#94a3b8;">🕒 {m['dt']}</span>
                 </div>
-                <div style="display:flex; justify-content: space-around; align-items:center;">
-                    <div style="text-align:center; width:40%; font-weight:bold;"><img src="{h['img']}" width="25"><br>{h['n']}</div>
+                <div style="display:flex; justify-content: space-around; align-items:center; padding:10px 0;">
+                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['h']}</div>
                     <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
-                    <div style="text-align:center; width:40%; font-weight:bold;"><img src="{a['img']}" width="25"><br>{a['n']}</div>
+                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['a']}</div>
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
                     🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
                 </div>
-                <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
-                    🏁 Ref: {m['ref']} | 📍 {m['st']}
-                </div>
+                <div class="st-venue">📍 {m['st']}</div>
             </div>
             """, unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία"):
-                col1, col2 = st.columns(2)
-                sh_v = col1.number_input(f"Goals {h['n']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa_v = col2.number_input(f"Goals {a['n']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh_v = col1.slider(f"Yellow {h['n']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya_v = col2.slider(f"Yellow {a['n']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh_v = col1.number_input(f"Red {h['n']}", 0, 5, m['r_h'], key=f"rh{m['id']}")
-                ra_v = col2.number_input(f"Red {a['n']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
-                ref_v = st.text_input("Διαιτητής", m['ref'], key=f"ref_in{m['id']}")
-                if st.button("Save", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "ref": ref_v})
+                colh, cola = st.columns(2)
+                sh_v = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_v = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_v = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_v = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh_v = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
+                ra_v = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
+                ph_v = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa_v = colh.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh_v = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa_v = colh.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                if st.button("Save Result", key=f"btn{m['id']}"):
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": int(rh_v), "r_a": int(ra_v), "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v})
                     st.rerun()
 
 with t2:
