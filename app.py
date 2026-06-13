@@ -235,7 +235,7 @@ with tabs[0]:
                 oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
                 oa_v = ch.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
-                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home Score First-> Lost", "Away Score First -> Lost"], index=0, key=f"turn_{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home Led -> Lost/Draw", "Away Led -> Lost/Draw"], index=0, key=f"turn_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
@@ -291,30 +291,15 @@ with tabs[2]:
 
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
-                  # Πλέγμα σκορ (από 0-0 έως 4-4)
-    for home_g in range(5):
+    actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
+    for h_g in range(5):
         cols_score = st.columns(5)
-        for away_g in range(5):
-            with cols_score[away_g]:
-                score_tuple = tuple(sorted((home_g, away_g)))
-                count = actual_scores.count(score_tuple)
-                
-                if count > 0:
-                    status_class = "score-out"
-                    status_icon = "✅"
-                    label = f"Βγήκε {count} φορές"
-                else:
-                    status_class = "score-delayed"
-                    status_icon = "⏳"
-                    label = "Καθυστερεί"
-                
-                st.markdown(f"""
-                <div class="score-box {status_class}">
-                    <div style="font-size: 18px;">{home_g} - {away_g}</div>
-                    <div style="font-size: 10px; margin-top: 5px;">{status_icon} {label}</div>
-                </div>
-                """, unsafe_allow_html=True)
-   
+        for a_g in range(5):
+            with cols_score[a_g]:
+                current_score = (h_g, a_g)
+                count = actual_scores.count(current_score)
+                st_class = "score-out" if count > 0 else "score-delayed"
+                st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 # --- ΝΕΟ TAB: ΑΝΑΤΡΟΠΕΣ ---
 with tabs[4]:
