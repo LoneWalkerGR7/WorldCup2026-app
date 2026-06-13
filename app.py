@@ -335,7 +335,7 @@ with tabs[5]:
             model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
             
-            all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
+            all_teams_list = sorted(list(set([t['n'] for t in TEAMS_MAP])))
             c1, c2 = st.columns(2)
             h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
             a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
