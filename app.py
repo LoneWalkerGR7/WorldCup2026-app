@@ -478,14 +478,7 @@ with tabs[5]:
  
 **Συνολικό Confidence Score: X/10**
                     """
-                    try:
-                        result_text = get_ai_prediction(working_model, advanced_prompt)
-                        st.markdown("---")
-                        st.markdown(result_text)
-                    except Exception as e:
-                        if "429" in str(e): st.error("🚨 Όριο Google! Περίμενε 2 λεπτά.")
-                        else: st.error(f"Σφάλμα AI: {e}")
-        except Exception as e:
-            st.error(f"Σφάλμα σύνδεσης: {e}")
-    else:
-        st.warning("Προσθέστε το GEMINI_API_KEY στα Secrets.")
+                ans = get_ai_prediction(working_model, advanced_prompt)
+                    st.markdown("---")
+                    st.markdown(ans)
+        except Exception as e: st.error(f"Error: {e}")
