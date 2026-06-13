@@ -332,14 +332,30 @@ with tabs[5]:
     if api_key:
         try:
             genai.configure(api_key=api_key)
+            model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
+            
             c1, c2 = st.columns(2)
-            home = c1.selectbox("Home", all_names, key="ai_h")
-            away = c2.selectbox("Away", all_names, index=1, key="ai_a")
-            m_no = st.number_input("Αγώνας #", 1, 104, 1)
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            h_t = c1.selectbox("Home Team", team_list, key="sel_h")
+            a_t = c2.selectbox("Away Team", team_list, index=1, key="sel_a")
+            match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
+            extra_notes = st.text_area("🗒️ Πρόσθετες σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
-                with st.spinner("Analyzing..."):
-                    prompt = f"Analyze match #{m_no}: {home} vs {away}. Notes: {extra_notes}. Tactical prediction in Greek."
-                    ans = get_ai_prediction('gemini-1.5-flash', prompt)
-                    st.info(ans)
-        except Exception as e: st.error(f"Error: {e}")
+                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει..."):
+                    advanced_prompt = f"""
+                    Είσαι κορυφαίος αναλυτής. Μουντιάλ 2026, Αγώνας #{match_number}: {h_t} vs {a_t}.
+                    Σημειώσεις χρήστη: {extra_notes}
+                    Κάνε βαθιά ανάλυση (Injury report, φόρμα, προϊστορία αγώνα #{match_number}) και δώσε πρόβλεψη στα Ελληνικά.
+                    """
+                    try:
+                        result_text = get_ai_prediction(working_model, advanced_prompt)
+                        st.markdown("---")
+                        st.markdown(result_text)
+                    except Exception as e:
+                        if "429" in str(e): st.error("🚨 Όριο Google! Περίμενε 2 λεπτά.")
+                        else: st.error(f"Σφάλμα AI: {e}")
+        except Exception as e:
+            st.error(f"Σφάλμα σύνδεσης: {e}")
+    else:
+        st.warning("Προσθέστε το GEMINI_API_KEY στα Secrets.")
