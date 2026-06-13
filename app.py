@@ -328,6 +328,7 @@ with tabs[4]:
         st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
 # ΠΡΟΒΛΕΨΕΙΣ
+with tabs[5]:
 st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
