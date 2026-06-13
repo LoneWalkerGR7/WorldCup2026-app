@@ -5,7 +5,7 @@ import google.generativeai as genai
 import os
 from datetime import datetime, timedelta
 
-# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
+# --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -20,15 +20,13 @@ st.markdown("""
         border-radius: 12px;
         padding: 15px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
-    div[data-testid="stTable"] {
-        background-color: #0f172a;
-        border-radius: 10px;
-        border: 1px solid #1e293b;
-        padding: 5px;
-    }
-    div[data-testid="stTable"] table { color: white !important; width: 100% !important; }
+    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
+
+    div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
+    div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     
     button[data-testid="stBaseButton-secondary"] {
         color: black !important;
@@ -37,9 +35,6 @@ st.markdown("""
         border: 2px solid #ffffff !important;
         text-transform: uppercase;
     }
-
-    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
 
     .match-card {
         background: #0f172a;
@@ -61,6 +56,14 @@ st.markdown("""
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
+    
+    .turnaround-card {
+        background: #1e293b;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        border-left: 4px solid #06b6d4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -92,7 +95,6 @@ TEAMS_MAP = {
     "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"}, "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
 }
 
-# --- 3. ΠΡΟΓΡΑΜΜΑ ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "1", "2"], ["A", "12/06 05:00", "Estadio Akron", "3", "4"],
     ["B", "12/06 22:00", "BMO Field", "5", "6"], ["D", "13/06 04:00", "SoFi Stadium", "13", "14"],
@@ -140,7 +142,7 @@ def init_session():
             "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
             "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
             "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
-            "ref": "TBD"
+            "ref": "TBD", "turn": "Καμία"
         })
     st.session_state.wc_matches = matches
 
@@ -155,6 +157,9 @@ def auto_play():
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
+            # Τυχαία επιλογή ανατροπής αν υπάρχει νικητής
+            if m['sh'] > m['sa'] and random.random() > 0.8: m['turn'] = "2/1 (Ανατροπή)"
+            elif m['sa'] > m['sh'] and random.random() > 0.8: m['turn'] = "1/2 (Ανατροπή)"
             m['fin'] = True
     st.rerun()
 
@@ -190,7 +195,7 @@ b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
 with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
 
-tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
+tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
 with tabs[0]:
     cols = st.columns(3)
@@ -213,7 +218,7 @@ with tabs[0]:
                     🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
-                    🏁 Ref: {m['ref']} | 📍 {m['st']}
+                    🏁 Ref: {m['ref']} | 📍 {m['st']} | 🔄 {m['turn']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -228,10 +233,11 @@ with tabs[0]:
                 ph_v = ch.number_input(f"Pens {h['n']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
                 pa_v = ca.number_input(f"Pens {a['n']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
                 oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                oa_v = ch.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home Led -> Lost/Draw", "Away Led -> Lost/Draw"], index=0, key=f"turn_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v})
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
 
 with tabs[1]:
@@ -270,7 +276,6 @@ with tabs[2]:
             g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
             t_gf += g; t_ga += c
             t_y += m['y_h'] if is_h else m['y_a']
-            t_r += m['r_h'] if is_h else m['r_a']
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
@@ -286,7 +291,6 @@ with tabs[2]:
 
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
-    # Σωστή Λογική: Κάθε συνδυασμός είναι μοναδικός (Home-Away)
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
     for h_g in range(5):
         cols_score = st.columns(5)
@@ -297,7 +301,32 @@ with tabs[3]:
                 st_class = "score-out" if count > 0 else "score-delayed"
                 st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
+# --- ΝΕΟ TAB: ΑΝΑΤΡΟΠΕΣ ---
 with tabs[4]:
+    st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
+    t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
+    
+    t_col1, t_col2, t_col3 = st.columns(3)
+    t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
+    t_col2.metric("Ανατροπές 2/1", len([m for m in t_fin if m['turn'] == "2/1 (Ανατροπή)"]))
+    t_col3.metric("Ανατροπές 1/2", len([m for m in t_fin if m['turn'] == "1/2 (Ανατροπή)"]))
+    
+    st.write("---")
+    st.markdown("#### Λίστα Ανατροπών & Ημιανατροπών")
+    if t_fin:
+        for m in t_fin:
+            h_n = TEAMS_MAP[m['h_id']]['n']
+            a_n = TEAMS_MAP[m['a_id']]['n']
+            st.markdown(f"""
+            <div class="turnaround-card">
+                <span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br>
+                <b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
+
+with tabs[5]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
