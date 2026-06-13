@@ -235,7 +235,7 @@ with tabs[0]:
                 oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
                 oa_v = ch.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
-                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home Led -> Lost/Draw", "Away Led -> Lost/Draw"], index=0, key=f"turn_{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home SCORE First and LOST", "Away SCORE First and LOST"], index=0, key=f"turn_{m['id']}") 
                 if st.button("Save Result", key=f"btn{m['id']}"):
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
