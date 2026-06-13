@@ -307,7 +307,7 @@ with tabs[4]:
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
     
     t_col1, t_col2, t_col3 = st.columns(3)
-    t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
+    t_col1.metric("Σύνολο Ημί-Ανατροπών", len(t_fin))
     t_col2.metric("Ανατροπές 2/1", len([m for m in t_fin if m['turn'] == "2/1 (Ανατροπή)"]))
     t_col3.metric("Ανατροπές 1/2", len([m for m in t_fin if m['turn'] == "1/2 (Ανατροπή)"]))
     
