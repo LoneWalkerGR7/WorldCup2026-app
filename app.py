@@ -5,6 +5,7 @@ import google.generativeai as genai
 import os
 from datetime import datetime, timedelta
 
+
 # --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
