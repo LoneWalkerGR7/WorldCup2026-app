@@ -342,8 +342,42 @@ with t3:
                     <div style="font-size:11px; color:#58a6ff;">📅 {m['dt']}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
 with t4:
+    st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
+    st.write("Δες ποια σκορ έχουν βγει ήδη και ποια «καθυστερούν» στη διοργάνωση.")
+    
+    # Δημιουργία λίστας με τα σκορ που έχουν ήδη συμβεί
+    actual_scores = []
+    for m in st.session_state.wc_matches:
+        if m['fin']:
+            # Αποθηκεύουμε το σκορ ως (μικρότερο, μεγαλύτερο) για να πιάνουμε και το 1-0 και το 0-1
+            s = tuple(sorted((m['sh'], m['sa'])))
+            actual_scores.append(s)
+
+    # Πλέγμα σκορ (από 0-0 έως 4-4)
+    for home_g in range(5):
+        cols_score = st.columns(5)
+        for away_g in range(5):
+            with cols_score[away_g]:
+                score_tuple = tuple(sorted((home_g, away_g)))
+                count = actual_scores.count(score_tuple)
+                
+                if count > 0:
+                    status_class = "score-out"
+                    status_icon = "✅"
+                    label = f"Βγήκε {count} φορές"
+                else:
+                    status_class = "score-delayed"
+                    status_icon = "⏳"
+                    label = "Καθυστερεί"
+                
+                st.markdown(f"""
+                <div class="score-box {status_class}">
+                    <div style="font-size: 18px;">{home_g} - {away_g}</div>
+                    <div style="font-size: 10px; margin-top: 5px;">{status_icon} {label}</div>
+                </div>
+                """, unsafe_allow_html=True)
+with t5:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
