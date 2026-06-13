@@ -5,7 +5,7 @@ import google.generativeai as genai
 import os
 from datetime import datetime, timedelta
 
-# --- 1. CONFIG & CSS (COSMIC THEME - WHITE TEXT - BLACK RESET) ---
+# --- 1. CONFIG & CSS ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -20,8 +20,11 @@ st.markdown("""
         border-radius: 12px;
         padding: 15px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
+    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
+
     div[data-testid="stTable"] {
         background-color: #0f172a;
         border-radius: 10px;
@@ -37,9 +40,6 @@ st.markdown("""
         border: 2px solid #ffffff !important;
         text-transform: uppercase;
     }
-
-    .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
 
     .match-card {
         background: #0f172a;
@@ -57,110 +57,103 @@ st.markdown("""
         border: none !important;
         font-weight: 800 !important;
     }
+
+    .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; }
+    .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
+    .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
+    
+    .turnaround-card {
+        background: #1e293b;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        border-left: 4px solid #06b6d4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
-TEAMS = [
-    {"n": "Mexico", "g": "A"}, {"n": "South Africa", "g": "A"}, {"n": "South Korea", "g": "A"}, {"n": "Czechia", "g": "A"},
-    {"n": "Canada", "g": "B"}, {"n": "Bosnia and Herzegovina", "g": "B"}, {"n": "Qatar", "g": "B"}, {"n": "Switzerland", "g": "B"},
-    {"n": "Brazil", "g": "C"}, {"n": "Morocco", "g": "C"}, {"n": "Haiti", "g": "C"}, {"n": "Scotland", "g": "C"},
-    {"n": "USA", "g": "D"}, {"n": "Paraguay", "g": "D"}, {"n": "Australia", "g": "D"}, {"n": "Turkey", "g": "D"},
-    {"n": "Germany", "g": "E"}, {"n": "Curacao", "g": "E"}, {"n": "Ivory Coast", "g": "E"}, {"n": "Ecuador", "g": "E"},
-    {"n": "Netherlands", "g": "F"}, {"n": "Japan", "g": "F"}, {"n": "Sweden", "g": "F"}, {"n": "Tunisia", "g": "F"},
-    {"n": "Belgium", "g": "G"}, {"n": "Egypt", "g": "G"}, {"n": "Iran", "g": "G"}, {"n": "New Zealand", "g": "G"},
-    {"n": "Spain", "g": "H"}, {"n": "Cape Verde", "g": "H"}, {"n": "Saudi Arabia", "g": "H"}, {"n": "Uruguay", "g": "H"},
-    {"n": "France", "g": "I"}, {"n": "Senegal", "g": "I"}, {"n": "Iraq", "g": "I"}, {"n": "Norway", "g": "I"},
-    {"n": "Argentina", "g": "J"}, {"n": "Algeria", "g": "J"}, {"n": "Austria", "g": "J"}, {"n": "Jordan", "g": "J"},
-    {"n": "Portugal", "g": "K"}, {"n": "DR Congo", "g": "K"}, {"n": "Uzbekistan", "g": "K"}, {"n": "Colombia", "g": "K"},
-    {"n": "England", "g": "L"}, {"n": "Croatia", "g": "L"}, {"n": "Ghana", "g": "L"}, {"n": "Panama", "g": "L"}
-]
+TEAMS_MAP = {
+    "1": {"n": "Mexico", "img": "https://flagcdn.com/w80/mx.png", "g": "A"}, "2": {"n": "South Africa", "img": "https://flagcdn.com/w80/za.png", "g": "A"},
+    "3": {"n": "South Korea", "img": "https://flagcdn.com/w80/kr.png", "g": "A"}, "4": {"n": "Czechia", "img": "https://flagcdn.com/w80/cz.png", "g": "A"},
+    "5": {"n": "Canada", "img": "https://flagcdn.com/w80/ca.png", "g": "B"}, "6": {"n": "Bosnia", "img": "https://flagcdn.com/w80/ba.png", "g": "B"},
+    "7": {"n": "Qatar", "img": "https://flagcdn.com/w80/qa.png", "g": "B"}, "8": {"n": "Switzerland", "img": "https://flagcdn.com/w80/ch.png", "g": "B"},
+    "9": {"n": "Brazil", "img": "https://flagcdn.com/w80/br.png", "g": "C"}, "10": {"n": "Morocco", "img": "https://flagcdn.com/w80/ma.png", "g": "C"},
+    "11": {"n": "Haiti", "img": "https://flagcdn.com/w80/ht.png", "g": "C"}, "12": {"n": "Scotland", "img": "https://flagcdn.com/w80/gb-sct.png", "g": "C"},
+    "13": {"n": "USA", "img": "https://flagcdn.com/w80/us.png", "g": "D"}, "14": {"n": "Paraguay", "img": "https://flagcdn.com/w80/py.png", "g": "D"},
+    "15": {"n": "Australia", "img": "https://flagcdn.com/w80/au.png", "g": "D"}, "16": {"n": "Turkey", "img": "https://flagcdn.com/w80/tr.png", "g": "D"},
+    "17": {"n": "Germany", "img": "https://flagcdn.com/w80/de.png", "g": "E"}, "18": {"n": "Curacao", "img": "https://flagcdn.com/w80/cw.png", "g": "E"},
+    "19": {"n": "Ivory Coast", "img": "https://flagcdn.com/w80/ci.png", "g": "E"}, "20": {"n": "Ecuador", "img": "https://flagcdn.com/w80/ec.png", "g": "E"},
+    "21": {"n": "Netherlands", "img": "https://flagcdn.com/w80/nl.png", "g": "F"}, "22": {"n": "Japan", "img": "https://flagcdn.com/w80/jp.png", "g": "F"},
+    "23": {"n": "Sweden", "img": "https://flagcdn.com/w80/se.png", "g": "F"}, "24": {"n": "Tunisia", "img": "https://flagcdn.com/w80/tn.png", "g": "F"},
+    "25": {"n": "Belgium", "img": "https://flagcdn.com/w80/be.png", "g": "G"}, "26": {"n": "Egypt", "img": "https://flagcdn.com/w80/eg.png", "g": "G"},
+    "27": {"n": "Iran", "img": "https://flagcdn.com/w80/ir.png", "g": "G"}, "28": {"n": "New Zealand", "img": "https://flagcdn.com/w80/nz.png", "g": "G"},
+    "29": {"n": "Spain", "img": "https://flagcdn.com/w80/es.png", "g": "H"}, "30": {"n": "Cape Verde", "img": "https://flagcdn.com/w80/cv.png", "g": "H"},
+    "31": {"n": "Saudi Arabia", "img": "https://flagcdn.com/w80/sa.png", "g": "H"}, "32": {"n": "Uruguay", "img": "https://flagcdn.com/w80/uy.png", "g": "H"},
+    "33": {"n": "France", "img": "https://flagcdn.com/w80/fr.png", "g": "I"}, "34": {"n": "Senegal", "img": "https://flagcdn.com/w80/sn.png", "g": "I"},
+    "35": {"n": "Iraq", "img": "https://flagcdn.com/w80/iq.png", "g": "I"}, "36": {"n": "Norway", "img": "https://flagcdn.com/w80/no.png", "g": "I"},
+    "37": {"n": "Argentina", "img": "https://flagcdn.com/w80/ar.png", "g": "J"}, "38": {"n": "Algeria", "img": "https://flagcdn.com/w80/dz.png", "g": "J"},
+    "39": {"n": "Austria", "img": "https://flagcdn.com/w80/at.png", "g": "J"}, "40": {"n": "Jordan", "img": "https://flagcdn.com/w80/jo.png", "g": "J"},
+    "41": {"n": "Portugal", "img": "https://flagcdn.com/w80/pt.png", "g": "K"}, "42": {"n": "DR Congo", "img": "https://flagcdn.com/w80/cd.png", "g": "K"},
+    "43": {"n": "Uzbekistan", "img": "https://flagcdn.com/w80/uz.png", "g": "K"}, "44": {"n": "Colombia", "img": "https://flagcdn.com/w80/co.png", "g": "K"},
+    "45": {"n": "England", "img": "https://flagcdn.com/w80/gb-eng.png", "g": "L"}, "46": {"n": "Croatia", "img": "https://flagcdn.com/w80/hr.png", "g": "L"},
+    "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"}, "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
+}
 
+# --- 3. ΠΡΟΓΡΑΜΜΑ ---
 RAW_MATCHES = [
-    ["A", "11/06 22:00", "Estadio Azteca", "Mexico", "South Africa"],
-    ["A", "12/06 05:00", "Estadio Akron", "South Korea", "Czechia"],
-    ["B", "12/06 22:00", "BMO Field", "Canada", "Bosnia and Herzegovina"],
-    ["D", "13/06 04:00", "SoFi Stadium", "USA", "Paraguay"],
-    ["D", "14/06 07:00", "BC Place", "Australia", "Turkey"],
-    ["B", "13/06 22:00", "Levi's Stadium", "Qatar", "Switzerland"],
-    ["C", "14/06 01:00", "MetLife Stadium", "Brazil", "Morocco"],
-    ["C", "14/06 04:00", "Gillette Stadium", "Haiti", "Scotland"],
-    ["E", "14/06 20:00", "NRG Stadium", "Germany", "Curacao"],
-    ["F", "14/06 23:00", "AT&T Stadium", "Netherlands", "Japan"],
-    ["E", "15/06 02:00", "Lincoln Field", "Ivory Coast", "Ecuador"],
-    ["F", "15/06 05:00", "Estadio BBVA", "Sweden", "Tunisia"],
-    ["H", "15/06 19:00", "Mercedes-Benz", "Spain", "Cape Verde"],
-    ["G", "15/06 22:00", "Lumen Field", "Belgium", "Egypt"],
-    ["H", "16/06 01:00", "Hard Rock", "Saudi Arabia", "Uruguay"],
-    ["G", "16/06 04:00", "SoFi Stadium", "Iran", "New Zealand"],
-    ["J", "17/06 07:00", "Levi's Stadium", "Austria", "Jordan"],
-    ["I", "16/06 10:00", "MetLife", "France", "Senegal"],
-    ["I", "17/06 01:00", "Gillette", "Iraq", "Norway"],
-    ["J", "17/06 04:00", "Arrowhead", "Argentina", "Algeria"],
-    ["K", "17/06 08:00", "NRG Stadium", "Portugal", "DR Congo"],
-    ["L", "17/06 11:00", "AT&T Stadium", "England", "Croatia"],
-    ["L", "18/06 02:00", "BMO Field", "Ghana", "Panama"],
-    ["K", "18/06 05:00", "Estadio Azteca", "Uzbekistan", "Colombia"],
-    ["A", "18/06 07:00", "Mercedes-Benz", "Czechia", "South Africa"],
-    ["B", "18/06 10:00", "SoFi Stadium", "Switzerland", "Bosnia and Herzegovina"],
-    ["B", "19/06 01:00", "BC Place", "Canada", "Qatar"],
-    ["A", "19/06 04:00", "Estadio Akron", "Mexico", "South Korea"],
-    ["D", "20/06 06:00", "Levi's Stadium", "Turkey", "Paraguay"],
-    ["D", "19/06 10:00", "Lumen Field", "USA", "Australia"],
-    ["C", "20/06 01:00", "Gillette", "Scotland", "Morocco"],
-    ["C", "20/06 03:30", "Lincoln Field", "Brazil", "Haiti"],
-    ["F", "21/06 07:00", "Estadio BBVA", "Tunisia", "Japan"],
-    ["F", "20/06 08:00", "NRG Stadium", "Netherlands", "Sweden"],
-    ["E", "20/06 11:00", "BMO Field", "Germany", "Ivory Coast"],
-    ["E", "21/06 03:00", "Arrowhead", "Ecuador", "Curacao"],
-    ["H", "21/06 07:00", "Mercedes-Benz", "Spain", "Saudi Arabia"],
-    ["G", "21/06 10:00", "SoFi Stadium", "Belgium", "Iran"],
-    ["H", "22/06 01:00", "Hard Rock", "Uruguay", "Cape Verde"],
-    ["G", "22/06 04:00", "BC Place", "New Zealand", "Egypt"],
-    ["J", "22/06 08:00", "AT&T Stadium", "Argentina", "Austria"],
-    ["I", "23/06 12:00", "Lincoln Field", "France", "Iraq"],
-    ["I", "23/06 03:00", "MetLife", "Norway", "Senegal"],
-    ["J", "23/06 06:00", "Levi's Stadium", "Jordan", "Algeria"],
-    ["K", "23/06 08:00", "NRG Stadium", "Portugal", "Uzbekistan"],
-    ["L", "23/06 11:00", "Gillette", "England", "Ghana"],
-    ["L", "24/06 02:00", "BMO Field", "Panama", "Croatia"],
-    ["K", "24/06 05:00", "Estadio Akron", "Colombia", "DR Congo"],
-    ["B", "24/06 10:00", "BC Place", "Switzerland", "Canada"],
-    ["B", "24/06 10:00", "Lumen Field", "Bosnia and Herzegovina", "Qatar"],
-    ["C", "25/06 01:00", "Hard Rock Stadium", "Scotland", "Brazil"],
-    ["C", "25/06 01:00", "Mercedes-Benz", "Morocco", "Haiti"],
-    ["A", "25/06 04:00", "Estadio Azteca", "Czechia", "Mexico"],
-    ["A", "25/06 04:00", "Estadio BBVA", "South Africa", "South Korea"],
-    ["E", "25/06 11:00", "MetLife", "Ecuador", "Germany"],
-    ["E", "25/06 11:00", "Lincoln Field", "Curacao", "Ivory Coast"],
-    ["F", "26/06 02:00", "AT&T Stadium", "Japan", "Sweden"],
-    ["F", "26/06 02:00", "Arrowhead", "Tunisia", "Netherlands"],
-    ["D", "26/06 05:00", "SoFi Stadium", "Turkey", "USA"],
-    ["D", "26/06 05:00", "Levi's Stadium", "Paraguay", "Australia"],
-    ["I", "26/06 10:00", "Gillette", "Norway", "France"],
-    ["I", "26/06 10:00", "BMO Field", "Senegal", "Iraq"],
-    ["H", "27/06 03:00", "Estadio Akron", "Uruguay", "Spain"],
-    ["H", "27/06 03:00", "NRG Stadium", "Cape Verde", "Saudi Arabia"],
-    ["G", "27/06 06:00", "Lumen Field", "Egypt", "Iran"],
-    ["G", "27/06 06:00", "BC Place", "New Zealand", "Belgium"],
-    ["L", "28/06 12:00", "MetLife", "Panama", "England"],
-    ["L", "28/06 12:00", "Lincoln Field", "Croatia", "Ghana"],
-    ["K", "28/06 02:30", "Hard Rock Stadium", "Colombia", "Portugal"],
-    ["K", "28/06 02:30", "Mercedes-Benz", "DR Congo", "Uzbekistan"],
-    ["J", "28/06 05:00", "Arrowhead", "Algeria", "Austria"],
-    ["J", "28/06 05:00", "AT&T Stadium", "Jordan", "Argentina"]
+    ["A", "11/06 22:00", "Estadio Azteca", "1", "2"], ["A", "12/06 05:00", "Estadio Akron", "3", "4"],
+    ["B", "12/06 22:00", "BMO Field", "5", "6"], ["D", "13/06 04:00", "SoFi Stadium", "13", "14"],
+    ["D", "14/06 07:00", "BC Place", "15", "16"], ["B", "13/06 22:00", "Levi's Stadium", "7", "8"],
+    ["C", "14/06 01:00", "MetLife Stadium", "9", "10"], ["C", "14/06 04:00", "Gillette Stadium", "11", "12"],
+    ["E", "14/06 20:00", "NRG Stadium", "17", "18"], ["F", "14/06 23:00", "AT&T Stadium", "21", "22"],
+    ["E", "15/06 02:00", "Lincoln Field", "19", "20"], ["F", "15/06 05:00", "Estadio BBVA", "23", "24"],
+    ["H", "15/06 19:00", "Mercedes-Benz", "29", "30"], ["G", "15/06 22:00", "Lumen Field", "25", "26"],
+    ["H", "16/06 01:00", "Hard Rock", "31", "32"], ["G", "16/06 04:00", "SoFi Stadium", "27", "28"],
+    ["J", "17/06 07:00", "Levi's Stadium", "39", "40"], ["I", "16/06 10:00", "MetLife", "33", "34"],
+    ["I", "17/06 01:00", "Gillette", "35", "36"], ["J", "17/06 04:00", "Arrowhead", "37", "38"],
+    ["K", "17/06 08:00", "NRG Stadium", "41", "42"], ["L", "17/06 11:00", "AT&T Stadium", "45", "46"],
+    ["L", "18/06 02:00", "BMO Field", "47", "48"], ["K", "18/06 05:00", "Estadio Azteca", "43", "44"],
+    ["A", "18/06 07:00", "Mercedes-Benz", "4", "2"], ["B", "18/06 10:00", "SoFi Stadium", "8", "6"],
+    ["B", "19/06 01:00", "BC Place", "5", "7"], ["A", "19/06 04:00", "Estadio Akron", "1", "3"],
+    ["D", "20/06 06:00", "Levi's Stadium", "16", "14"], ["D", "19/06 10:00", "Lumen Field", "13", "15"],
+    ["C", "20/06 01:00", "Gillette", "12", "10"], ["C", "20/06 03:30", "Lincoln Field", "9", "11"],
+    ["F", "21/06 07:00", "Estadio BBVA", "24", "22"], ["F", "20/06 08:00", "NRG Stadium", "21", "23"],
+    ["E", "20/06 11:00", "BMO Field", "17", "19"], ["E", "21/06 03:00", "Arrowhead", "20", "18"],
+    ["H", "21/06 07:00", "Mercedes-Benz", "29", "31"], ["G", "21/06 10:00", "SoFi Stadium", "25", "27"],
+    ["H", "22/06 01:00", "Hard Rock", "32", "30"], ["G", "22/06 04:00", "BC Place", "28", "26"],
+    ["J", "22/06 08:00", "AT&T Stadium", "37", "39"], ["I", "23/06 12:00", "Lincoln Field", "33", "35"],
+    ["I", "23/06 03:00", "MetLife", "36", "34"], ["J", "23/06 06:00", "Levi's Stadium", "40", "38"],
+    ["K", "23/06 08:00", "NRG Stadium", "41", "43"], ["L", "23/06 11:00", "Gillette", "45", "47"],
+    ["L", "24/06 02:00", "BMO Field", "48", "46"], ["K", "24/06 05:00", "Estadio Akron", "44", "42"],
+    ["B", "24/06 10:00", "BC Place", "8", "5"], ["B", "24/06 10:00", "Lumen Field", "6", "7"],
+    ["C", "25/06 01:00", "Hard Rock Stadium", "12", "9"], ["C", "25/06 01:00", "Mercedes-Benz", "10", "11"],
+    ["A", "25/06 04:00", "Estadio Azteca", "4", "1"], ["A", "25/06 04:00", "Estadio BBVA", "2", "3"],
+    ["E", "25/06 11:00", "MetLife", "20", "17"], ["E", "25/06 11:00", "Lincoln Field", "18", "19"],
+    ["F", "26/06 02:00", "AT&T Stadium", "22", "23"], ["F", "26/06 02:00", "Arrowhead", "24", "21"],
+    ["D", "26/06 05:00", "SoFi Stadium", "16", "13"], ["D", "26/06 05:00", "Levi's Stadium", "14", "15"],
+    ["I", "26/06 10:00", "Gillette", "36", "33"], ["I", "26/06 10:00", "BMO Field", "34", "35"],
+    ["H", "27/06 03:00", "Estadio Akron", "32", "29"], ["H", "27/06 03:00", "NRG Stadium", "30", "31"],
+    ["G", "27/06 06:00", "Lumen Field", "26", "27"], ["G", "27/06 06:00", "BC Place", "28", "25"],
+    ["L", "28/06 12:00", "MetLife", "48", "45"], ["L", "28/06 12:00", "Lincoln Field", "46", "47"],
+    ["K", "28/06 02:30", "Hard Rock Stadium", "44", "41"], ["K", "28/06 02:30", "Mercedes-Benz", "42", "43"],
+    ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"]
 ]
 
-# --- 4. SESSION STATE INITIALIZATION ---
-if 'wc_matches' not in st.session_state:
+# --- 4. SESSION STATE ---
+def init_session():
     matches = []
     for i, m_data in enumerate(RAW_MATCHES):
         matches.append({
             "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
-            "h": m_data[3], "a": m_data[4], "sh": None, "sa": None, "fin": False,
-            "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0
+            "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
+            "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
+            "ref": "TBD", "turn": "Καμία"
         })
     st.session_state.wc_matches = matches
+
+if 'wc_matches' not in st.session_state:
+    init_session()
 
 # --- 5. FUNCTIONS ---
 def auto_play():
@@ -168,17 +161,16 @@ def auto_play():
         if not m['fin']:
             m['sh'], m['sa'] = random.randint(0, 4), random.randint(0, 4)
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
-            m['r_h'] = 1 if random.random() > 0.95 else 0
-            m['r_a'] = 1 if random.random() > 0.95 else 0
-            m['p_h'] = 1 if random.random() > 0.9 else 0
-            m['p_a'] = 1 if random.random() > 0.9 else 0
-            m['og_h'] = 1 if random.random() > 0.98 else 0
-            m['og_a'] = 1 if random.random() > 0.98 else 0
+            m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
+            m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
+            # Logic for turnarounds English
+            if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
+            elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
             m['fin'] = True
     st.rerun()
 
 def reset():
-    if 'wc_matches' in st.session_state: del st.session_state['wc_matches']
+    init_session()
     st.cache_data.clear()
     st.rerun()
 
@@ -190,7 +182,6 @@ def get_ai_prediction(model_id, prompt):
 
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
-
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
 total_y = sum(m['y_h'] + m['y_a'] for m in fin_m)
 total_r = sum(m['r_h'] + m['r_a'] for m in fin_m)
@@ -207,15 +198,16 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 
 st.write("")
 b1, b2 = st.columns([2, 1])
-with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ", on_click=auto_play, type="primary")
-with b2: st.button("🔄 RESET TOURNAMENT", on_click=reset, type="secondary")
+with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
+with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
 
-# --- 7. TABS ---
-t1, t2, t3, t4 = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ ΚΑΙ ΣΤΑΤΙΣΤΙΚΑ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
+tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
-with t1:
+with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
+        h = TEAMS_MAP.get(m['h_id'], {"n": "N/A", "img": ""})
+        a = TEAMS_MAP.get(m['a_id'], {"n": "N/A", "img": ""})
         with cols[idx % 3]:
             st.markdown(f"""
             <div class="match-card">
@@ -223,291 +215,145 @@ with t1:
                     <span class="group-tag">GROUP {m['group']}</span>
                     <span style="font-size:10px; color:#94a3b8;">🕒 {m['dt']}</span>
                 </div>
-                <div style="display:flex; justify-content: space-around; align-items:center; padding:10px 0;">
-                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['h']}</div>
+                <div style="display:flex; justify-content: space-around; align-items:center;">
+                    <div style="text-align:center; width:40%; font-weight:bold;"><img src="{h['img']}" width="25"><br>{h['n']}</div>
                     <div style="font-size:20px; color:#06b6d4; font-weight:800;">{m['sh'] if m['sh'] is not None else '-'} : {m['sa'] if m['sa'] is not None else '-'}</div>
-                    <div style="width:40%; text-align:center; font-weight:bold; font-size:13px;">{m['a']}</div>
+                    <div style="text-align:center; width:40%;"><img src="{a['img']}" width="25"><br>{a['n']}</div>
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
                     🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
                 </div>
-                <div class="st-venue">📍 {m['st']}</div>
+                <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
+                    🏁 Ref: {m['ref']} | 📍 {m['st']} | 🔄 {m['turn']}
+                </div>
             </div>
             """, unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία"):
-                colh, cola = st.columns(2)
-                sh_v = colh.number_input(f"Goals {m['h']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa_v = cola.number_input(f"Goals {m['a']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh_v = colh.slider(f"Yellow {m['h']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya_v = cola.slider(f"Yellow {m['a']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh_v = colh.checkbox(f"Red {m['h']}", value=bool(m['r_h']), key=f"rh{m['id']}")
-                ra_v = cola.checkbox(f"Red {m['a']}", value=bool(m['r_a']), key=f"ra{m['id']}")
-                ph_v = colh.number_input(f"Pens {m['h']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa_v = colh.number_input(f"Pens {m['a']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh_v = colh.number_input(f"OG {m['h']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_v = colh.number_input(f"OG {m['a']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                ch, ca = st.columns(2)
+                sh_v = ch.number_input(f"Goals {h['n']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
+                sa_v = ca.number_input(f"Goals {a['n']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                yh_v = ch.slider(f"Yellow {h['n']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
+                ya_v = ca.slider(f"Yellow {a['n']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
+                rh_v = ch.number_input(f"Red {h['n']}", 0, 5, m['r_h'], key=f"rh{m['id']}")
+                ra_v = ca.number_input(f"Red {a['n']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
+                ph_v = ch.number_input(f"Pens {h['n']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
+                pa_v = ca.number_input(f"Pens {a['n']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
+                oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
+                oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "Home SCORE First and LOSE", "Away SCORE First and LOSE"], index=0, key=f"turn_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": int(rh_v), "r_a": int(ra_v), "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v})
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
 
-with t2:
-    GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+with tabs[1]:
     cols_s = st.columns(3)
+    GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
     for i, gId in enumerate(GROUPS_L):
         with cols_s[i % 3]:
             st.markdown(f"#### Group {gId}")
-            g_teams = sorted(list(set([m['h'] for m in st.session_state.wc_matches if m['group'] == gId] + [m['a'] for m in st.session_state.wc_matches if m['group'] == gId])))
+            g_team_ids = [tid for tid, d in TEAMS_MAP.items() if d['g'] == gId]
             res = []
-            for t in g_teams:
+            for tid in g_team_ids:
+                team = TEAMS_MAP[tid]
                 pts, gd, y, r, p, og = 0, 0, 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
-                    if m['fin'] and (m['h'] == t or m['a'] == t):
-                        is_h = m['h'] == t
+                    if m['fin'] and (m['h_id'] == tid or m['a_id'] == tid):
+                        is_h = m['h_id'] == tid
                         h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
                         y += m['y_h'] if is_h else m['y_a']
                         r += m['r_h'] if is_h else m['r_a']
-                        p += m['p_h'] if is_h else m['p_a']
-                        og += m['og_h'] if is_h else m['og_a']
                         gd += (h_s - a_s)
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
-                res.append({"Team": t, "Pts": pts, "GD": gd, "Y": y, "R": r, "P": p, "OG": og})
-            st.table(pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False))
+                res.append({"Flag": team['img'], "Team": team['n'], "Pts": pts, "GD": gd, "Y": y, "R": r})
+            df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
+            st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
-with t3:
-    st.markdown("### 📈 Ανάλυση Πορείας Ομάδων")
-    team_list = sorted(list(set([t['n'] for t in TEAMS])))
-    selected_team = st.selectbox("Επίλεξε Ομάδα για να δεις τι έκανε σε κάθε αγώνα:", team_list)
-    
-    team_matches = [m for m in st.session_state.wc_matches if (m['h'] == selected_team or m['a'] == selected_team)]
-    team_matches = sorted(team_matches, key=lambda x: x['id'])
+with tabs[2]:
+    all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
+    sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
+    team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
+    t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
     
     t_pts, t_gf, t_ga, t_y, t_r, t_p, t_og = 0, 0, 0, 0, 0, 0, 0
-    for m in team_matches:
+    for m in t_matches:
         if m['fin']:
-            is_home = m['h'] == selected_team
-            goals = m['sh'] if is_home else m['sa']
-            conceded = m['sa'] if is_home else m['sh']
-            t_gf += goals
-            t_ga += conceded
-            t_y += m['y_h'] if is_home else m['y_a']
-            t_r += m['r_h'] if is_home else m['r_a']
-            t_p += m['p_h'] if is_home else m['p_a']
-            t_og += m['og_h'] if is_home else m['og_a']
-            if goals > conceded: t_pts += 3
-            elif goals == conceded: t_pts += 1
-
-    st.markdown(f"#### Συνολικά Στατιστικά για: {selected_team}")
-    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
-    s_col1.metric("Βαθμοί", t_pts)
-    s_col2.metric("Γκολ (Υπέρ-Κατά)", f"{t_gf}-{t_ga}")
-    s_col3.metric("Κάρτες (Y-R)", f"{t_y}-{t_r}")
-    s_col4.metric("Πέναλτι / OG", f"{t_p} / {t_og}")
+            is_h = m['h_id'] == team_id
+            g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+            t_gf += g; t_ga += c
+            t_y += m['y_h'] if is_h else m['y_a']
+            t_r += m['r_h'] if is_h else m['r_a']
+            t_p += m['p_h'] if is_h else m['p_a']
+            t_og += m['og_h'] if is_h else m['og_a']
+            if g > c: t_pts += 3
+            elif g == c: t_pts += 1
     
-    st.write("---")
+    c_s1, c_s2, c_s3, c_s4 = st.columns(4)
+    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}"); c_s4.metric("Pens / OG", f"{t_p} / {t_og}")
     
     cols_team = st.columns(3)
-    for idx, m in enumerate(team_matches):
+    for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
-            match_title = f"{idx + 1}ος Αγώνας"
-            if m['fin']:
-                is_home = m['h'] == selected_team
-                my_goals = m['sh'] if is_home else m['sa']
-                opp_goals = m['sa'] if is_home else m['sh']
-                my_yellow = m['y_h'] if is_home else m['y_a']
-                my_red = m['r_h'] if is_home else m['r_a']
-                
-                if my_goals > opp_goals: res_txt, res_col = "ΝΙΚΗ ✅", "#10b981"
-                elif my_goals < opp_goals: res_txt, res_col = "ΗΤΤΑ ❌", "#ef4444"
-                else: res_txt, res_col = "ΙΣΟΠΑΛΙΑ 🤝", "#f59e0b"
-                
-                st.markdown(f"""
-                <div class="match-card" style="border-top: 4px solid {res_col};">
-                    <div style="color:#06b6d4; font-weight:bold; font-size:12px;">{match_title}</div>
-                    <div style="font-size:14px; margin:10px 0;">
-                        <b>{m['h']} {m['sh']} - {m['sa']} {m['a']}</b>
-                    </div>
-                    <div style="color:{res_col}; font-weight:bold; font-size:14px;">{res_txt}</div>
-                    <hr style="margin:8px 0; border-color:#1e293b;">
-                    <div style="font-size:11px; color:#94a3b8;">
-                        ⚽ Γκολ: {my_goals} | 🟨 {my_yellow} | 🟥 {my_red}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="match-card">
-                    <div style="color:#94a3b8; font-weight:bold; font-size:12px;">{match_title}</div>
-                    <div style="font-size:13px; margin:10px 0;">Εκκρεμεί: {m['h']} vs {m['a']}</div>
-                    <div style="font-size:11px; color:#58a6ff;">📅 {m['dt']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+            res_col = "#10b981" if m['fin'] else "#1e293b"
+            h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
+            st.markdown(f"""<div class="match-card" style="border-top:4px solid {res_col}">
+            <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
+            </div>""", unsafe_allow_html=True)
 
-with t4:
+with tabs[3]:
+    st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
+    actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
+    for h_g in range(5):
+        cols_score = st.columns(5)
+        for a_g in range(5):
+            with cols_score[a_g]:
+                current_score = (h_g, a_g)
+                count = actual_scores.count(current_score)
+                st_class = "score-out" if count > 0 else "score-delayed"
+                st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
+
+with tabs[4]:
+    st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
+    t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
+    t_col1, t_col2, t_col3 = st.columns(3)
+    t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
+    t_col2.metric("Home SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Home SCORE First and LOSE"]))
+    t_col3.metric("Away SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Away SCORE First and LOSE"]))
+    st.write("---")
+    if t_fin:
+        for m in t_fin:
+            h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
+    else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
+
+with tabs[5]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
-            
-            all_teams_list = sorted(list(set([t['n'] for t in TEAMS])))
+            working_model = 'gemini-1.5-flash'
             c1, c2 = st.columns(2)
-            h_t = c1.selectbox("Home Team", all_teams_list, key="sel_h")
-            a_t = c2.selectbox("Away Team", all_teams_list, index=1, key="sel_a")
-            match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1)
+            home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
+            h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
+            a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
+            match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
             
-            # --- ΠΡΟΣΘΗΚΗ ΠΛΑΙΣΙΟΥ ΣΗΜΕΙΩΣΕΩΝ ---
-            extra_notes = st.text_area("🗒️ Πρόσθετες σημειώσεις τελευταίας στιγμής:", 
-                                      placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός, ο διαιτητής είναι πολύ αυστηρός...",
-                                      help="Αυτές οι σημειώσεις θα ληφθούν υπόψη από την AI για την πρόβλεψη.")
-            
-            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
-                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει φόρμα, προϊστορία και τακτική..."):
+            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
+                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει τα πλάνα..."):
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
-
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
-
-════════════════════════════════════════
-📋 ΟΔΗΓΙΕΣ ΠΡΟΗΓΜΕΝΗΣ ΑΝΑΛΥΣΗΣ
-════════════════════════════════════════
-
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ (Chain-of-Thought — εκτέλεσε ΟΛΑ)
-════════════════════════════════════════════════════════
- 
-── ΒΗΜΑ 1: ΠΕΡΙΒΑΛΛΟΝ & ΔΙΑΙΤΗΣΙΑ ──────────────────────
-• Εντόπισε τον ορισθέντα διαιτητή του αγώνα (web search αν χρειάζεται).
-• Στατιστικά διαιτητή: κάρτες/90', πέναλτι/αγώνα, red cards/αγώνα, στυλ.
-• Καιρός: θερμοκρασία (°C), υγρασία (%), άνεμος, βροχή.
-→ Συμπέρανε: πόσες κάρτες αναμένεις, πιθανότητα πέναλτι, επίδραση καιρού στο πρέσινγκ.
- 
-── ΒΗΜΑ 2: ΔΥΝΑΜΙΚΗ ΤΟΥΡΝΟΥΑ (ΠΡΟΤΕΡΑΙΟΤΗΤΑ Νο1) ──────
-• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026, άντλησε:
-  - xG & xGOT | Σουτ: Σύνολο/Στόχο/Blocked/Εντός-Εκτός Περιοχής
-  - PPDA | Progressive passes | Aerial duels % | Δοκάρια
-  - IN-PLAY PROFILE: πώς παίζει όταν προηγείται / υστερεί
-  - Γκολ ανά ημίχρονο (1ο vs 2ο τάση)
-• Αν είναι 1ος αγώνας: τελευταίοι 10 επίσημοι + προκριματικά.
-
-2. ΔΥΝΑΜΙΚΗ ΦΟΡΜΑ ΤΟΥΡΝΟΥΑ (Από τη 2η Αγωνιστική & μετά - ΚΡΙΣΙΜΟ):
-   - Αν οι ομάδες έχουν ήδη παίξει παιχνίδι/α στο Μουντιάλ 2026, η ανάλυση πρέπει να δώσει προτεραιότητα σε αυτά τα data έναντι των προκριματικών.
-   - Ενσωμάτωσε υποχρεωτικά τις εξής advanced μετρικές από τα τρέχοντα παιχνίδια τους στη διοργάνωση:
-     * Αναμενόμενα γκολ (xG) & xG στο στόχο (xGOT) για την ποιότητα των τελειωμάτων.
-     * Συνολικά Σουτ, Σουτ στο στόχο, Άστοχα και Κομμένα (Blocked) σουτ.
-     * Κατανομή: Σουτ εντός περιοχής vs Σουτ εκτός περιοχής.
-     * Αποτελεσματικότητα στον αέρα (Γκολ με κεφαλιά) και ατυχία (Δοκάρια).
-
-3. ΔΙΑΘΕΣΙΜΟΤΗΤΑ ΠΑΙΚΤΩΝ: Τραυματισμοί, τιμωρίες, επιστροφές της τελευταίας στιγμής (λαμβάνοντας υπόψη τις σημειώσεις του χρήστη).
-
-4. HEAD-TO-HEAD & ΙΣΤΟΡΙΚΟ ΜΟΤΙΒΟ ΑΓΩΝΑ #{match_number}: 
-   - Προηγούμενες αναμετρήσεις των δύο ομάδων.
-   - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα (#{match_number}) στα Μουντιάλ 2022, 2018 και 2014 (π.χ. αν παραδοσιακά ο αγώνας αυτός βγάζει πολλά γκολ, εκπλήξεις ή κόκκινες).
-
-5. ΤΑΚΤΙΚΗ ΑΝΑΛΥΣΗ: Συστήματα (π.χ. 4-3-3, 3-5-2), transition, build-up, ευάλωτες ζώνες στην άμυνα και tactical matchup των key-players.
-
-════════════════════════════════════════
-📤 ΜΟΡΦΗ ΑΠΑΝΤΗΣΗΣ (αποκλειστικά Ελληνικά, Markdown)
-════════════════════════════════════════
-
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-
----
-
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Κλιματικές Συνθήκες
-(Ανάλυση διαιτητή, καρτών, θερμοκρασίας/υγρασίας και η επίδρασή τους στο ρυθμό)
-
-### 🏥 Διαθεσιμότητα, Ρόστερ & Last-Minute Updates
-(Ενσωμάτωση σημειώσεων χρήστη και απουσιών/επιστροφών)
-
-### 📊 Προηγμένη Ανάλυση Data & xG (Τρέχουσα Εικόνα)
-(Εδώ ανάλυσε τη φόρμα. Αν είναι το 2ο+ παιχνίδι, κάνε ενδελεχή χρήση των xG, xGOT, κατανομής σουτ εντός/εκτός περιοχής, blocked shots, δοκαριών και κεφαλιών από τα ματς του Μουντιάλ. Αν είναι το 1ο ματς, βασίσου στα τελευταία 10 επίσημα)
-
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-(Η ιστορική αναδρομή του συγκεκριμένου slot αγώνα στις προηγούμενες διοργανώσεις)
-
-### 🔮 Προηγμένο Μοντέλο Πρόβλεψης & Πιθανότητες
-(Υπολόγισε τις πιθανότητες με βάση τα advanced metrics που ανέλυσες παραπάνω)
-
-### 📋 Περιβάλλον Αγώνα
-| Παράμετρος | Τιμή | Επίδραση |
-|------------|------|----------|
-| Διαιτητής | Όνομα (χώρα) | Αυστηρός/Επιεικής |
-| Κάρτες/αγώνα | X.X 🟨 / X.X 🟥 | ... |
-| Πέναλτι/αγώνα | X.XX | ... |
-| Θερμοκρασία | X°C | ... |
-| Υγρασία | X% | ... |
-| Υψόμετρο | Xm | ... |
- 
-### 🏥 Ρόστερ & Διαθεσιμότητα
-**{h_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-**{a_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-> 🔄 Σενάριο απουσίας: Αν λείπει ο [X], η πιθανότητα [Y] αλλάζει κατά ~X%
- 
-### 📊 Advanced Data & xG Dashboard
-| Μετρική | {h_t} | {a_t} | Πλεονέκτημα |
-|---------|--------|--------|-------------|
-| xG | X.XX | X.XX | → |
-| xGOT | X.XX | X.XX | → |
-| Σουτ σύνολο | XX | XX | → |
-| Σουτ στόχο | XX | XX | → |
-| Εντός περιοχής | XX% | XX% | → |
-| PPDA | X.X | X.X | → |
-| Δοκάρια | X | X | → |
-| Γκολ 1ο ημίχρονο | X | X | → |
-| Γκολ 2ο ημίχρονο | X | X | → |
- 
-### ⚔️ Τακτική & Key Matchups
-**Σχηματισμοί:** {h_t} [X-X-X] vs {a_t} [X-X-X]
-- 🔑 Matchup #1: [A] vs [B] → [νικητής + λόγος]
-- 🔑 Matchup #2: [C] vs [D] → [νικητής + λόγος]
-- ⚠️ Ευάλωτη ζώνη {h_t}: [...]
-- ⚠️ Ευάλωτη ζώνη {a_t}: [...]
-- 🎯 Set pieces: [ποια ομάδα πλεονεκτεί]
- 
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
-|------------|--------|------|------|--------|---------|
-| 2022 | A vs B | X-X | X | XY/XR | ... |
-| 2018 | C vs D | X-X | X | XY/XR | ... |
-| 2014 | E vs F | X-X | X | XY/XR | ... |
- 
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα | Βάση | Confidence |
-|-----------|----------|------------|------|------------|
-| Αποτέλεσμα (1-X-2) | {h_t}/Ισοπαλία/{a_t} | XX%/XX%/XX% | Bayesian xG | X/10 |
-| Πιο πιθανό σκορ | X-X | XX% | Poisson | X/10 |
-| Over 2.5 Goals | Ναι/Όχι | XX% | Συνολικό xG | X/10 |
-| BTTS | Ναι/Όχι | XX% | Επιθ/Αμυν profile | X/10 |
-| Over 9.5 Κάρτες | Ναι/Όχι | XX% | Referee + Ένταση | X/10 |
-| Πέναλτι | Ναι/Όχι | XX% | Ref + Box attacks | X/10 |
-| Κόκκινη Κάρτα | Ναι/Όχι | XX% | Ref + H2H | X/10 |
-| Ανατροπή (In-play) | Ναι/Όχι | XX% | In-play profile | X/10 |
-| Γκολ 1ου ημιχρόνου | Ναι/Όχι | XX% | 1ο ημίχρονο τάση | X/10 |
- 
-> 💡 **Value Bets:** [ποια πρόβλεψη έχει probability > implied probability αγοράς]
- 
-### 🎯 Στρατηγικό Συμπέρασμα
-[3-4 προτάσεις: πού κρίνεται ο αγώνας, ποιο matchup καθορίζει, ποιος παράγοντας έχει τη μεγαλύτερη επίδραση]
- 
-**Συνολικό Confidence Score: X/10**
+                    You are a top football analyst. Methodology: Web Search. Analyze match #{match_number} | {h_t} vs {a_t} (World Cup 2026).
+                    USER NOTES: {extra_notes}
+                    
+                    TASK:
+                    1. Search for real-time injuries and referee statistics for match #{match_number}.
+                    2. Check historical patterns for the #{match_number} spot in World Cup 2022, 2018, 2014.
+                    
+                    Return response in Greek with sections: Match Identity, Player availability, Data analysis, Historical Pattern, and Score Prediction.
                     """
-                    try:
-                        result_text = get_ai_prediction(working_model, advanced_prompt)
-                        st.markdown("---")
-                        st.markdown(result_text)
-                    except Exception as e:
-                        if "429" in str(e): st.error("🚨 Όριο Google! Περίμενε 2 λεπτά.")
-                        else: st.error(f"Σφάλμα AI: {e}")
-        except Exception as e:
-            st.error(f"Σφάλμα σύνδεσης: {e}")
-    else:
-        st.warning("Προσθέστε το GEMINI_API_KEY στα Secrets.")
+                    ans = get_ai_prediction(working_model, advanced_prompt)
+                    st.markdown("---")
+                    st.markdown(ans)
+        except Exception as e: st.error(f"Error: {e}")
