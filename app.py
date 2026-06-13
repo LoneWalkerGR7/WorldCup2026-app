@@ -13,62 +13,19 @@ st.markdown("""
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
     [data-testid="stHeader"] { background: rgba(0,0,0,0); }
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
-    
-    .stat-card {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 12px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    }
+    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
     .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
-
-    div[data-testid="stTable"] {
-        background-color: #0f172a;
-        border-radius: 10px;
-        border: 1px solid #1e293b;
-        padding: 5px;
-    }
-    div[data-testid="stTable"] table { color: white !important; width: 100% !important; }
-    
-    button[data-testid="stBaseButton-secondary"] {
-        color: black !important;
-        background-color: #f1f5f9 !important;
-        font-weight: 800 !important;
-        border: 2px solid #ffffff !important;
-        text-transform: uppercase;
-    }
-
-    .match-card {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 10px;
-    }
-    .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
+    div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
+    div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
+    button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
+    .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
-    
-    button[data-testid="stBaseButton-primary"] {
-        background-color: #ef4444 !important;
-        color: white !important;
-        border: none !important;
-        font-weight: 800 !important;
-    }
-
+    button[data-testid="stBaseButton-primary"] { background-color: #ef4444 !important; color: white !important; border: none !important; font-weight: 800 !important; }
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
-    
-    .turnaround-card {
-        background: #1e293b;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 5px;
-        border-left: 4px solid #06b6d4;
-    }
+    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -100,7 +57,6 @@ TEAMS_MAP = {
     "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"}, "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
 }
 
-# --- 3. ΠΡΟΓΡΑΜΜΑ ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "1", "2"], ["A", "12/06 05:00", "Estadio Akron", "3", "4"],
     ["B", "12/06 22:00", "BMO Field", "5", "6"], ["D", "13/06 04:00", "SoFi Stadium", "13", "14"],
@@ -163,7 +119,6 @@ def auto_play():
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
-            # Logic for turnarounds English
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
             m['fin'] = True
@@ -203,6 +158,7 @@ with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary"
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
+# ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -246,6 +202,7 @@ with tabs[0]:
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
 
+# ΒΑΘΜΟΛΟΓΙΕΣ
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -270,6 +227,7 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
+# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
@@ -301,6 +259,7 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
+# ΑΝΑΛΥΣΗ ΣΚΟΡ
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
@@ -313,13 +272,14 @@ with tabs[3]:
                 st_class = "score-out" if count > 0 else "score-delayed"
                 st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
+# ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
     t_col1, t_col2, t_col3 = st.columns(3)
     t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
-    t_col2.metric("Home SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Home SCORE First and LOSE"]))
-    t_col3.metric("Away SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Away SCORE First and LOSE"]))
+    t_col2.metric("Home Score and Lose", len([m for m in t_fin if m['turn'] == "Home SCORE First and LOSE"]))
+    t_col3.metric("Away Score and Lose", len([m for m in t_fin if m['turn'] == "Away SCORE First and LOSE"]))
     st.write("---")
     if t_fin:
         for m in t_fin:
@@ -327,13 +287,17 @@ with tabs[4]:
             st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
+# ΠΡΟΒΛΕΨΕΙΣ
 with tabs[5]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            working_model = 'gemini-1.5-flash'
+            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ΓΙΑ ΑΠΟΦΥΓΗ 404
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
+            
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
@@ -342,18 +306,40 @@ with tabs[5]:
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Ο ΚΟΝΤΟΣ αναλύει τα πλάνα..."):
+                with st.spinner("Analyzing..."):
                     advanced_prompt = f"""
-                    You are a top football analyst. Methodology: Web Search. Analyze match #{match_number} | {h_t} vs {a_t} (World Cup 2026).
-                    USER NOTES: {extra_notes}
-                    
-                    TASK:
-                    1. Search for real-time injuries and referee statistics for match #{match_number}.
-                    2. Check historical patterns for the #{match_number} spot in World Cup 2022, 2018, 2014.
-                    
-                    Return response in Greek with sections: Match Identity, Player availability, Data analysis, Historical Pattern, and Score Prediction.
-                    """
+Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
+
+Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+════════════════════════════════════════
+📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
+════════════════════════════════════════
+- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
+- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
+
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει.
+2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
+
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+### 🔮 Quantitative Prediction Model
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
                     ans = get_ai_prediction(working_model, advanced_prompt)
                     st.markdown("---")
                     st.markdown(ans)
-        except Exception as e: st.error(f"Error: {e}")
+        except Exception as e: st.error(f"AI Connection Error: {e}")
