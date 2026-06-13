@@ -163,8 +163,8 @@ def auto_play():
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             # Logic for turnarounds
-            if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "2/1"
-            elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "1/2"
+            if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
+            elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
             m['fin'] = True
     st.rerun()
 
@@ -202,6 +202,7 @@ with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary"
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
+# ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -245,6 +246,7 @@ with tabs[0]:
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
 
+# ΒΑΘΜΟΛΟΓΙΕΣ
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -269,22 +271,29 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
+# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
     t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
-    t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
+    
+    t_pts, t_gf, t_ga, t_y, t_r, t_p, t_og = 0, 0, 0, 0, 0, 0, 0
     for m in t_matches:
         if m['fin']:
             is_h = m['h_id'] == team_id
             g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
             t_gf += g; t_ga += c
             t_y += m['y_h'] if is_h else m['y_a']
+            t_r += m['r_h'] if is_h else m['r_a']
+            t_p += m['p_h'] if is_h else m['p_a']
+            t_og += m['og_h'] if is_h else m['og_a']
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
+    
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
-    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}")
+    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}"); c_s4.metric("Pens / OG", f"{t_p} / {t_og}")
+    
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
@@ -294,6 +303,7 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
+# ΑΝΑΛΥΣΗ ΣΚΟΡ
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
@@ -306,19 +316,26 @@ with tabs[3]:
                 st_class = "score-out" if count > 0 else "score-delayed"
                 st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
+# ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
+    
     t_col1, t_col2, t_col3 = st.columns(3)
-    t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
-    t_col2.metric("1/2 ή Home FIRST & LOST", len([m for m in t_fin if m['turn'] in ["1/2", "Home Team Score FIRST and LOST"]]))
-    t_col3.metric("2/1 ή Away FIRST & LOST", len([m for m in t_fin if m['turn'] in ["2/1", "Away Team Score FIRST and LOST"]]))
+    # ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕΤΡΗΣΗΣ
+    half_turns = [m for m in t_fin if m['turn'] in ["Home Team Score FIRST and LOST", "Away Team Score FIRST and LOST"]]
+    t_col1.metric("Σύνολο Ημιανατροπών", len(half_turns))
+    t_col2.metric("Ανατροπή 1/2", len([m for m in t_fin if m['turn'] == "1/2"]))
+    t_col3.metric("Ανατροπή 2/1", len([m for m in t_fin if m['turn'] == "2/1"]))
+    
     st.write("---")
+    st.markdown("#### Λίστα Ανατροπών & Ημιανατροπών")
     if t_fin:
         for m in t_fin:
             h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
-            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})</div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
+
 
 # ΠΡΟΒΛΕΨΕΙΣ
 with tabs[5]:
