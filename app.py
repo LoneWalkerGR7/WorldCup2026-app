@@ -95,6 +95,7 @@ TEAMS_MAP = {
     "47": {"n": "Ghana", "img": "https://flagcdn.com/w80/gh.png", "g": "L"}, "48": {"n": "Panama", "img": "https://flagcdn.com/w80/pa.png", "g": "L"}
 }
 
+# --- 3. ΠΡΟΓΡΑΜΜΑ ---
 RAW_MATCHES = [
     ["A", "11/06 22:00", "Estadio Azteca", "1", "2"], ["A", "12/06 05:00", "Estadio Akron", "3", "4"],
     ["B", "12/06 22:00", "BMO Field", "5", "6"], ["D", "13/06 04:00", "SoFi Stadium", "13", "14"],
@@ -157,9 +158,6 @@ def auto_play():
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
-            # Τυχαία επιλογή ανατροπής αν υπάρχει νικητής
-            if m['sh'] > m['sa'] and random.random() > 0.8: m['turn'] = "2/1 (Ανατροπή)"
-            elif m['sa'] > m['sh'] and random.random() > 0.8: m['turn'] = "1/2 (Ανατροπή)"
             m['fin'] = True
     st.rerun()
 
@@ -197,6 +195,7 @@ with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary"
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
+# ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -233,13 +232,14 @@ with tabs[0]:
                 ph_v = ch.number_input(f"Pens {h['n']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
                 pa_v = ca.number_input(f"Pens {a['n']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
                 oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_v = ch.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
+                oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
-                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home Led -> Lost/Draw", "Away Led -> Lost/Draw"], index=0, key=f"turn_{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "2/1 (Ανατροπή)", "1/2 (Ανατροπή)", "Home SCORE First and LOSE", "Away SCORE First and LOSE"], index=0, key=f"turn_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
                     st.rerun()
 
+# ΒΑΘΜΟΛΟΓΙΕΣ
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -264,11 +264,13 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
+# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
     t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
+    
     t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
     for m in t_matches:
         if m['fin']:
@@ -278,8 +280,10 @@ with tabs[2]:
             t_y += m['y_h'] if is_h else m['y_a']
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
+    
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
     c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}")
+    
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
@@ -289,6 +293,7 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
+# ΑΝΑΛΥΣΗ ΣΚΟΡ
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
@@ -301,31 +306,22 @@ with tabs[3]:
                 st_class = "score-out" if count > 0 else "score-delayed"
                 st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
-# --- ΝΕΟ TAB: ΑΝΑΤΡΟΠΕΣ ---
+# ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
-    
     t_col1, t_col2, t_col3 = st.columns(3)
     t_col1.metric("Σύνολο Ανατροπών", len(t_fin))
-    t_col2.metric("Ανατροπές 2/1", len([m for m in t_fin if m['turn'] == "2/1 (Ανατροπή)"]))
-    t_col3.metric("Ανατροπές 1/2", len([m for m in t_fin if m['turn'] == "1/2 (Ανατροπή)"]))
-    
+    t_col2.metric("Home SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Home SCORE First and LOSE"]))
+    t_col3.metric("Away SCORE First and LOSE", len([m for m in t_fin if m['turn'] == "Away SCORE First and LOSE"]))
     st.write("---")
-    st.markdown("#### Λίστα Ανατροπών & Ημιανατροπών")
     if t_fin:
         for m in t_fin:
-            h_n = TEAMS_MAP[m['h_id']]['n']
-            a_n = TEAMS_MAP[m['a_id']]['n']
-            st.markdown(f"""
-            <div class="turnaround-card">
-                <span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br>
-                <b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
+            h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})</div>""", unsafe_allow_html=True)
+    else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
+# ΠΡΟΒΛΕΨΕΙΣ
 with tabs[5]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
@@ -333,13 +329,39 @@ with tabs[5]:
         try:
             genai.configure(api_key=api_key)
             c1, c2 = st.columns(2)
-            home = c1.selectbox("Home", all_names, key="ai_h")
-            away = c2.selectbox("Away", all_names, index=1, key="ai_a")
-            m_no = st.number_input("Αγώνας #", 1, 104, 1)
+            h_t = c1.selectbox("Home", all_names, key="ai_h")
+            a_t = c2.selectbox("Away", all_names, index=1, key="ai_a")
+            match_number = st.number_input("Αγώνας #", 1, 104, 1)
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary"):
                 with st.spinner("Analyzing..."):
-                    prompt = f"Analyze match #{m_no}: {home} vs {away}. Notes: {extra_notes}. Tactical prediction in Greek."
-                    ans = get_ai_prediction('gemini-1.5-flash', prompt)
-                    st.info(ans)
+                    working_model = 'gemini-1.5-flash'
+                    advanced_prompt = f"""
+Είσαι ένας elite football analyst. Μεθοδολογία Web Search. Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026.
+ΣΗΜΕΙΩΣΕΙΣ: {extra_notes}
+
+ΒΗΜΑΤΑ:
+1. ΠΕΡΙΒΑΛΛΟΝ: Διαιτητής αγώνα #{match_number} & Καιρός.
+2. ΦΟΡΜΑ: xG/xGOT, σουτ, blocked shots, δοκάρια από ματς Μουντιάλ 2026 (αν υπάρχουν) αλλιώς τελευταία 10.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε στον αγώνα #{match_number} το 2022, 2018, 2014.
+
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+### 🔮 Quantitative Prediction
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
+                    ans = get_ai_prediction(working_model, advanced_prompt)
+                    st.markdown("---")
+                    st.markdown(ans)
         except Exception as e: st.error(f"Error: {e}")
