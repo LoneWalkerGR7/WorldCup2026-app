@@ -329,13 +329,14 @@ with tabs[4]:
 
 # ΠΡΟΒΛΕΨΕΙΣ
 with tabs[5]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
+     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            working_model = 'gemini-1.5-flash'
-            c1, c2 = st.columns(2)
+            model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            working_model = next((m for m in model_list if '1.5-flash' in m), model_list[0])
+
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
