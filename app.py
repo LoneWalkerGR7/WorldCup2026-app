@@ -58,7 +58,7 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
-    .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; }
+    .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 60px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
     
@@ -147,7 +147,7 @@ def init_session():
             "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
             "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
             "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
-            "ref": "TBD", "turn": "Καμία"
+            "ref": "TBD", "turn": "Καμία", "htft": "TBD"
         })
     st.session_state.wc_matches = matches
 
@@ -162,9 +162,13 @@ def auto_play():
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
-            # Logic for turnarounds
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
+            # Simulate HT/FT
+            res = "X"
+            if m['sh'] > m['sa']: res = "1"
+            elif m['sa'] > m['sh']: res = "2"
+            m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
             m['fin'] = True
     st.rerun()
 
@@ -182,10 +186,10 @@ def get_ai_prediction(model_id, prompt):
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
-total_y = sum(m['y_h'] + m['y_a'] for m in fin_m)
-total_r = sum(m['r_h'] + m['r_a'] for m in fin_m)
-total_p = sum(m['p_h'] + m['p_a'] for m in fin_m)
-total_og = sum(m['og_h'] + m['og_a'] for m in fin_m)
+total_y = sum(m.get('y_h',0) + m.get('y_a',0) for m in fin_m)
+total_r = sum(m.get('r_h',0) + m.get('r_a',0) for m in fin_m)
+total_p = sum(m.get('p_h',0) + m.get('p_a',0) for m in fin_m)
+total_og = sum(m.get('og_h',0) + m.get('og_a',0) for m in fin_m)
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
@@ -200,7 +204,7 @@ b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
 with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
 
-tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
+tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
 # ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
@@ -221,10 +225,10 @@ with tabs[0]:
                     <div style="text-align:center; width:40%;"><img src="{a['img']}" width="25"><br>{a['n']}</div>
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; border-top: 1px solid #1e293b; padding-top:4px;">
-                    🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
+                    🟨 {m.get('y_h',0)}:{m.get('y_a',0)} | 🟥 {m.get('r_h',0)}:{m.get('r_a',0)} | 🎯 {m.get('p_h',0)}:{m.get('p_a',0)} | ⚠️ {m.get('og_h',0)}:{m.get('og_a',0)}
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
-                    🏁 Ref: {m['ref']} | 📍 {m['st']} | 🔄 {m['turn']}
+                    🏁 Ref: {m.get('ref','TBD')} | 📍 {m['st']} | 🔄 {m.get('turn','Καμία')} | 🌓 {m.get('htft','TBD')}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -232,18 +236,19 @@ with tabs[0]:
                 ch, ca = st.columns(2)
                 sh_v = ch.number_input(f"Goals {h['n']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
                 sa_v = ca.number_input(f"Goals {a['n']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
-                yh_v = ch.slider(f"Yellow {h['n']}", 0, 10, m['y_h'], key=f"yh{m['id']}")
-                ya_v = ca.slider(f"Yellow {a['n']}", 0, 10, m['y_a'], key=f"ya{m['id']}")
-                rh_v = ch.number_input(f"Red {h['n']}", 0, 5, m['r_h'], key=f"rh{m['id']}")
-                ra_v = ca.number_input(f"Red {a['n']}", 0, 5, m['r_a'], key=f"ra{m['id']}")
-                ph_v = ch.number_input(f"Pens {h['n']}", 0, 5, m['p_h'], key=f"ph{m['id']}")
-                pa_v = ca.number_input(f"Pens {a['n']}", 0, 5, m['p_a'], key=f"pa{m['id']}")
-                oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
-                oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
-                ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
-                turn_v = st.selectbox("Ανατροπή", ["Καμία", "1/2", "2/1", "Home Team Score FIRST and LOST", "Away Team Score FIRST and LOST"], index=0, key=f"turn_{m['id']}")
+                yh_v = ch.slider(f"Yellow {h['n']}", 0, 10, m.get('y_h',0), key=f"yh{m['id']}")
+                ya_v = ca.slider(f"Yellow {a['n']}", 0, 10, m.get('y_a',0), key=f"ya{m['id']}")
+                rh_v = ch.number_input(f"Red {h['n']}", 0, 5, m.get('r_h',0), key=f"rh{m['id']}")
+                ra_v = ca.number_input(f"Red {a['n']}", 0, 5, m.get('r_a',0), key=f"ra{m['id']}")
+                ph_v = ch.number_input(f"Pens {h['n']}", 0, 5, m.get('p_h',0), key=f"ph{m['id']}")
+                pa_v = ca.number_input(f"Pens {a['n']}", 0, 5, m.get('p_a',0), key=f"pa{m['id']}")
+                oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m.get('og_h',0), key=f"oh{m['id']}")
+                oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m.get('og_a',0), key=f"oa{m['id']}")
+                ref_v = st.text_input("Referee", m.get('ref','TBD'), key=f"ref_in{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "Home SCORE First and LOSE", "Away SCORE First and LOSE", "1/2", "2/1"], index=0, key=f"turn_{m['id']}")
+                htft_v = st.selectbox("Ημίχρονο/Τελικό", ["TBD", "1/1", "1/X", "1/2", "X/1", "X/X", "X/2", "2/1", "2/X", "2/2"], index=0, key=f"htft_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v, "htft": htft_v})
                     st.rerun()
 
 # ΒΑΘΜΟΛΟΓΙΕΣ
@@ -262,8 +267,8 @@ with tabs[1]:
                     if m['fin'] and (m['h_id'] == tid or m['a_id'] == tid):
                         is_h = m['h_id'] == tid
                         h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
-                        y += m['y_h'] if is_h else m['y_a']
-                        r += m['r_h'] if is_h else m['r_a']
+                        y += m.get('y_h',0) if is_h else m.get('y_a',0)
+                        r += m.get('r_h',0) if is_h else m.get('r_a',0)
                         gd += (h_s - a_s)
                         if h_s > a_s: pts += 3
                         elif h_s == a_s: pts += 1
@@ -278,21 +283,18 @@ with tabs[2]:
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
     t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
     
-    t_pts, t_gf, t_ga, t_y, t_r, t_p, t_og = 0, 0, 0, 0, 0, 0, 0
+    t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
     for m in t_matches:
         if m['fin']:
             is_h = m['h_id'] == team_id
             g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
             t_gf += g; t_ga += c
-            t_y += m['y_h'] if is_h else m['y_a']
-            t_r += m['r_h'] if is_h else m['r_a']
-            t_p += m['p_h'] if is_h else m['p_a']
-            t_og += m['og_h'] if is_h else m['og_a']
+            t_y += m.get('y_h',0) if is_h else m.get('y_a',0)
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
     
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
-    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}"); c_s4.metric("Pens / OG", f"{t_p} / {t_og}")
+    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y)", t_y)
     
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
@@ -319,34 +321,40 @@ with tabs[3]:
 # ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
-    t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
-    
+    t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m.get('turn','Καμία') != "Καμία"]
     t_col1, t_col2, t_col3 = st.columns(3)
-    # ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕΤΡΗΣΗΣ
-    half_turns = [m for m in t_fin if m['turn'] in ["Home Team Score FIRST and LOST", "Away Team Score FIRST and LOST"]]
+    half_turns = [m for m in t_fin if m['turn'] in ["Home SCORE First and LOSE", "Away SCORE First and LOSE"]]
     t_col1.metric("Σύνολο Ημιανατροπών", len(half_turns))
     t_col2.metric("Ανατροπή 1/2", len([m for m in t_fin if m['turn'] == "1/2"]))
     t_col3.metric("Ανατροπή 2/1", len([m for m in t_fin if m['turn'] == "2/1"]))
-    
     st.write("---")
-    st.markdown("#### Λίστα Ανατροπών & Ημιανατροπών")
     if t_fin:
         for m in t_fin:
             h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
-            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
-# ΠΡΟΒΛΕΨΕΙΣ
+# ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ
 with tabs[5]:
+    st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
+    st.write("Εμφάνιση αποτελεσμάτων HT/FT (εξαιρούνται οι πλήρεις ανατροπές 1/2 και 2/1).")
+    htft_types = ["1/1", "1/X", "X/1", "X/X", "X/2", "2/X", "2/2"]
+    all_htft = [m.get('htft','TBD') for m in st.session_state.wc_matches if m['fin'] and m.get('htft','TBD') in htft_types]
+    cols_htft = st.columns(7)
+    for idx, t_type in enumerate(htft_types):
+        with cols_htft[idx]:
+            count = all_htft.count(t_type)
+            st_class = "score-out" if count > 0 else "score-delayed"
+            st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
+
+# ΠΡΟΒΛΕΨΕΙΣ
+with tabs[6]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ΓΙΑ ΑΠΟΦΥΓΗ 404
-            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
-            
+            working_model = 'gemini-1.5-flash'
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
@@ -357,141 +365,10 @@ with tabs[5]:
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("Analyzing..."):
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
-
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
-
-════════════════════════════════════════
-📋 ΟΔΗΓΙΕΣ ΠΡΟΗΓΜΕΝΗΣ ΑΝΑΛΥΣΗΣ
-════════════════════════════════════════
-
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ (Chain-of-Thought — εκτέλεσε ΟΛΑ)
-════════════════════════════════════════════════════════
- 
-── ΒΗΜΑ 1: ΠΕΡΙΒΑΛΛΟΝ & ΔΙΑΙΤΗΣΙΑ ──────────────────────
-• Εντόπισε τον ορισθέντα διαιτητή του αγώνα (web search αν χρειάζεται).
-• Στατιστικά διαιτητή: κάρτες/90', πέναλτι/αγώνα, red cards/αγώνα, στυλ.
-• Καιρός: θερμοκρασία (°C), υγρασία (%), άνεμος, βροχή.
-→ Συμπέρανε: πόσες κάρτες αναμένεις, πιθανότητα πέναλτι, επίδραση καιρού στο πρέσινγκ.
- 
-── ΒΗΜΑ 2: ΔΥΝΑΜΙΚΗ ΤΟΥΡΝΟΥΑ (ΠΡΟΤΕΡΑΙΟΤΗΤΑ Νο1) ──────
-• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026, άντλησε:
-  - xG & xGOT | Σουτ: Σύνολο/Στόχο/Blocked/Εντός-Εκτός Περιοχής
-  - PPDA | Progressive passes | Aerial duels % | Δοκάρια
-  - IN-PLAY PROFILE: πώς παίζει όταν προηγείται / υστερεί
-  - Γκολ ανά ημίχρονο (1ο vs 2ο τάση)
-• Αν είναι 1ος αγώνας: τελευταίοι 10 επίσημοι + προκριματικά.
-
-2. ΔΥΝΑΜΙΚΗ ΦΟΡΜΑ ΤΟΥΡΝΟΥΑ (Από τη 2η Αγωνιστική & μετά - ΚΡΙΣΙΜΟ):
-   - Αν οι ομάδες έχουν ήδη παίξει παιχνίδι/α στο Μουντιάλ 2026, η ανάλυση πρέπει να δώσει προτεραιότητα σε αυτά τα data έναντι των προκριματικών.
-   - Ενσωμάτωσε υποχρεωτικά τις εξής advanced μετρικές από τα τρέχοντα παιχνίδια τους στη διοργάνωση:
-     * Αναμενόμενα γκολ (xG) & xG στο στόχο (xGOT) για την ποιότητα των τελειωμάτων.
-     * Συνολικά Σουτ, Σουτ στο στόχο, Άστοχα και Κομμένα (Blocked) σουτ.
-     * Κατανομή: Σουτ εντός περιοχής vs Σουτ εκτός περιοχής.
-     * Αποτελεσματικότητα στον αέρα (Γκολ με κεφαλιά) και ατυχία (Δοκάρια).
-
-3. ΔΙΑΘΕΣΙΜΟΤΗΤΑ ΠΑΙΚΤΩΝ: Τραυματισμοί, τιμωρίες, επιστροφές της τελευταίας στιγμής (λαμβάνοντας υπόψη τις σημειώσεις του χρήστη).
-
-4. HEAD-TO-HEAD & ΙΣΤΟΡΙΚΟ ΜΟΤΙΒΟ ΑΓΩΝΑ #{match_number}: 
-   - Προηγούμενες αναμετρήσεις των δύο ομάδων.
-   - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα (#{match_number}) στα Μουντιάλ 2022, 2018 και 2014 (π.χ. αν παραδοσιακά ο αγώνας αυτός βγάζει πολλά γκολ, εκπλήξεις ή κόκκινες).
-
-5. ΤΑΚΤΙΚΗ ΑΝΑΛΥΣΗ: Συστήματα (π.χ. 4-3-3, 3-5-2), transition, build-up, ευάλωτες ζώνες στην άμυνα και tactical matchup των key-players.
-
-════════════════════════════════════════
-📤 ΜΟΡΦΗ ΑΠΑΝΤΗΣΗΣ (αποκλειστικά Ελληνικά, Markdown)
-════════════════════════════════════════
-
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-
----
-
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Κλιματικές Συνθήκες
-(Ανάλυση διαιτητή, καρτών, θερμοκρασίας/υγρασίας και η επίδρασή τους στο ρυθμό)
-
-### 🏥 Διαθεσιμότητα, Ρόστερ & Last-Minute Updates
-(Ενσωμάτωση σημειώσεων χρήστη και απουσιών/επιστροφών)
-
-### 📊 Προηγμένη Ανάλυση Data & xG (Τρέχουσα Εικόνα)
-(Εδώ ανάλυσε τη φόρμα. Αν είναι το 2ο+ παιχνίδι, κάνε ενδελεχή χρήση των xG, xGOT, κατανομής σουτ εντός/εκτός περιοχής, blocked shots, δοκαριών και κεφαλιών από τα ματς του Μουντιάλ. Αν είναι το 1ο ματς, βασίσου στα τελευταία 10 επίσημα)
-
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-(Η ιστορική αναδρομή του συγκεκριμένου slot αγώνα στις προηγούμενες διοργανώσεις)
-
-### 🔮 Προηγμένο Μοντέλο Πρόβλεψης & Πιθανότητες
-(Υπολόγισε τις πιθανότητες με βάση τα advanced metrics που ανέλυσες παραπάνω)
-
-### 📋 Περιβάλλον Αγώνα
-| Παράμετρος | Τιμή | Επίδραση |
-|------------|------|----------|
-| Διαιτητής | Όνομα (χώρα) | Αυστηρός/Επιεικής |
-| Κάρτες/αγώνα | X.X 🟨 / X.X 🟥 | ... |
-| Πέναλτι/αγώνα | X.XX | ... |
-| Θερμοκρασία | X°C | ... |
-| Υγρασία | X% | ... |
-| Υψόμετρο | Xm | ... |
- 
-### 🏥 Ρόστερ & Διαθεσιμότητα
-**{h_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-**{a_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-> 🔄 Σενάριο απουσίας: Αν λείπει ο [X], η πιθανότητα [Y] αλλάζει κατά ~X%
- 
-### 📊 Advanced Data & xG Dashboard
-| Μετρική | {h_t} | {a_t} | Πλεονέκτημα |
-|---------|--------|--------|-------------|
-| xG | X.XX | X.XX | → |
-| xGOT | X.XX | X.XX | → |
-| Σουτ σύνολο | XX | XX | → |
-| Σουτ στόχο | XX | XX | → |
-| Εντός περιοχής | XX% | XX% | → |
-| PPDA | X.X | X.X | → |
-| Δοκάρια | X | X | → |
-| Γκολ 1ο ημίχρονο | X | X | → |
-| Γκολ 2ο ημίχρονο | X | X | → |
- 
-### ⚔️ Τακτική & Key Matchups
-**Σχηματισμοί:** {h_t} [X-X-X] vs {a_t} [X-X-X]
-- 🔑 Matchup #1: [A] vs [B] → [νικητής + λόγος]
-- 🔑 Matchup #2: [C] vs [D] → [νικητής + λόγος]
-- ⚠️ Ευάλωτη ζώνη {h_t}: [...]
-- ⚠️ Ευάλωτη ζώνη {a_t}: [...]
-- 🎯 Set pieces: [ποια ομάδα πλεονεκτεί]
- 
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
-|------------|--------|------|------|--------|---------|
-| 2022 | A vs B | X-X | X | XY/XR | ... |
-| 2018 | C vs D | X-X | X | XY/XR | ... |
-| 2014 | E vs F | X-X | X | XY/XR | ... |
- 
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα | Βάση | Confidence |
-|-----------|----------|------------|------|------------|
-| Αποτέλεσμα (1-X-2) | {h_t}/Ισοπαλία/{a_t} | XX%/XX%/XX% | Bayesian xG | X/10 |
-| Πιο πιθανό σκορ | X-X | XX% | Poisson | X/10 |
-| Over 2.5 Goals | Ναι/Όχι | XX% | Συνολικό xG | X/10 |
-| BTTS | Ναι/Όχι | XX% | Επιθ/Αμυν profile | X/10 |
-| Over 9.5 Κάρτες | Ναι/Όχι | XX% | Referee + Ένταση | X/10 |
-| Πέναλτι | Ναι/Όχι | XX% | Ref + Box attacks | X/10 |
-| Κόκκινη Κάρτα | Ναι/Όχι | XX% | Ref + H2H | X/10 |
-| Ανατροπή (In-play) | Ναι/Όχι | XX% | In-play profile | X/10 |
-| Γκολ 1ου ημιχρόνου | Ναι/Όχι | XX% | 1ο ημίχρονο τάση | X/10 |
- 
-> 💡 **Value Bets:** [ποια πρόβλεψη έχει probability > implied probability αγοράς]
- 
-### 🎯 Στρατηγικό Συμπέρασμα
-[3-4 προτάσεις: πού κρίνεται ο αγώνας, ποιο matchup καθορίζει, ποιος παράγοντας έχει τη μεγαλύτερη επίδραση]
- 
-**Συνολικό Confidence Score: X/10**
-
-"""
+                    You are a top football analyst. Analyze match #{match_number} | {h_t} vs {a_t}.
+                    USER NOTES: {extra_notes}
+                    Return deep prediction in Greek using Markdown.
+                    """
                     ans = get_ai_prediction(working_model, advanced_prompt)
                     st.markdown("---")
                     st.markdown(ans)
