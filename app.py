@@ -25,12 +25,7 @@ st.markdown("""
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
     .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
 
-    div[data-testid="stTable"] {
-        background-color: #0f172a;
-        border-radius: 10px;
-        border: 1px solid #1e293b;
-        padding: 5px;
-    }
+    div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
     div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     
     button[data-testid="stBaseButton-secondary"] {
@@ -147,7 +142,7 @@ def init_session():
             "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
             "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
             "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
-            "ref": "TBD", "turn": "Καμία"
+            "ref": "TBD", "turn": "Καμία", "htft": "TBD"
         })
     st.session_state.wc_matches = matches
 
@@ -162,9 +157,13 @@ def auto_play():
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
-            # Logic for turnarounds
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
+            # Simulate HT/FT
+            res = "X"
+            if m['sh'] > m['sa']: res = "1"
+            elif m['sa'] > m['sh']: res = "2"
+            m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
             m['fin'] = True
     st.rerun()
 
@@ -200,9 +199,9 @@ b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
 with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
 
-tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
+tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
-# ΗΜΕΡΟΛΟΓΙΟ
+# --- TAB 0: ΗΜΕΡΟΛΟΓΙΟ ---
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -224,7 +223,7 @@ with tabs[0]:
                     🟨 {m['y_h']}:{m['y_a']} | 🟥 {m['r_h']}:{m['r_a']} | 🎯 {m['p_h']}:{m['p_a']} | ⚠️ {m['og_h']}:{m['og_a']}
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
-                    🏁 Ref: {m['ref']} | 📍 {m['st']} | 🔄 {m['turn']}
+                    🏁 Ref: {m['ref']} | 📍 {m['st']} | 🔄 {m['turn']} | 🌓 {m['htft']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -241,12 +240,13 @@ with tabs[0]:
                 oh_v = ch.number_input(f"OG {h['n']}", 0, 5, m['og_h'], key=f"oh{m['id']}")
                 oa_v = ca.number_input(f"OG {a['n']}", 0, 5, m['og_a'], key=f"oa{m['id']}")
                 ref_v = st.text_input("Referee", m['ref'], key=f"ref_in{m['id']}")
-                turn_v = st.selectbox("Ανατροπή", ["Καμία", "1/2", "2/1", "Home Team Score FIRST and LOST", "Away Team Score FIRST and LOST"], index=0, key=f"turn_{m['id']}")
+                turn_v = st.selectbox("Ανατροπή", ["Καμία", "Home SCORE First and LOSE", "Away SCORE First and LOSE", "1/2", "2/1"], index=0, key=f"turn_{m['id']}")
+                htft_v = st.selectbox("Ημίχρονο/Τελικό", ["TBD", "1/1", "1/X", "1/2", "X/1", "X/X", "X/2", "2/1", "2/X", "2/2"], index=0, key=f"htft_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
-                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v})
+                    m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v, "htft": htft_v})
                     st.rerun()
 
-# ΒΑΘΜΟΛΟΓΙΕΣ
+# --- TAB 1: ΒΑΘΜΟΛΟΓΙΕΣ ---
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -271,29 +271,23 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
-# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
+# --- TAB 2: ΠΟΡΕΙΑ ΟΜΑΔΩΝ ---
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
     t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
-    
-    t_pts, t_gf, t_ga, t_y, t_r, t_p, t_og = 0, 0, 0, 0, 0, 0, 0
+    t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
     for m in t_matches:
         if m['fin']:
             is_h = m['h_id'] == team_id
             g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
             t_gf += g; t_ga += c
             t_y += m['y_h'] if is_h else m['y_a']
-            t_r += m['r_h'] if is_h else m['r_a']
-            t_p += m['p_h'] if is_h else m['p_a']
-            t_og += m['og_h'] if is_h else m['og_a']
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
-    
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
-    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}"); c_s4.metric("Pens / OG", f"{t_p} / {t_og}")
-    
+    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}")
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
@@ -303,7 +297,7 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
-# ΑΝΑΛΥΣΗ ΣΚΟΡ
+# --- TAB 3: ΑΝΑΛΥΣΗ ΣΚΟΡ ---
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
@@ -347,9 +341,7 @@ with tabs[5]:
             st_class = "score-out" if count > 0 else "score-delayed"
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
-
-
-# ΠΡΟΒΛΕΨΕΙΣ
+# --- TAB 6: ΠΡΟΒΛΕΨΕΙΣ ---
 with tabs[6]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
