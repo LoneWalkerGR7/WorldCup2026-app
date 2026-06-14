@@ -320,21 +320,31 @@ with tabs[3]:
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m['turn'] != "Καμία"]
-    
     t_col1, t_col2, t_col3 = st.columns(3)
-    # ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΜΕΤΡΗΣΗΣ
-    half_turns = [m for m in t_fin if m['turn'] in ["Home Team Score FIRST and LOST", "Away Team Score FIRST and LOST"]]
+    half_turns = [m for m in t_fin if m['turn'] in ["Home SCORE First and LOST", "Away SCORE First and LOST"]]
     t_col1.metric("Σύνολο Ημιανατροπών", len(half_turns))
     t_col2.metric("Ανατροπή 1/2", len([m for m in t_fin if m['turn'] == "1/2"]))
     t_col3.metric("Ανατροπή 2/1", len([m for m in t_fin if m['turn'] == "2/1"]))
-    
     st.write("---")
-    st.markdown("#### Λίστα Ανατροπών & Ημιανατροπών")
     if t_fin:
         for m in t_fin:
             h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
-            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b> (Όμιλος {m['group']})</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
+
+# ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ
+with tabs[5]:
+    st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
+    st.write("Εμφάνιση αποτελεσμάτων HT/FT (εξαιρούνται οι ανατροπές 1/2 και 2/1).")
+    htft_types = ["1/1", "1/X", "X/1", "X/X", "X/2", "2/X", "2/2"]
+    all_htft = [m['htft'] for m in st.session_state.wc_matches if m['fin'] and m['htft'] in htft_types]
+    cols_htft = st.columns(7)
+    for idx, t_type in enumerate(htft_types):
+        with cols_htft[idx]:
+            count = all_htft.count(t_type)
+            st_class = "score-out" if count > 0 else "score-delayed"
+            st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
+
 
 
 # ΠΡΟΒΛΕΨΕΙΣ
