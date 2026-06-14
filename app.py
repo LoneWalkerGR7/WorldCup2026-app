@@ -15,8 +15,12 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     
     .stat-card {
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
-        padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
     .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
@@ -25,26 +29,41 @@ st.markdown("""
     div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     
     button[data-testid="stBaseButton-secondary"] {
-        color: black !important; background-color: #f1f5f9 !important;
-        font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase;
+        color: black !important;
+        background-color: #f1f5f9 !important;
+        font-weight: 800 !important;
+        border: 2px solid #ffffff !important;
+        text-transform: uppercase;
     }
 
     .match-card {
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
-        padding: 12px; margin-bottom: 10px;
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 10px;
     }
+    .st-venue { font-size: 9px; color: #94a3b8 !important; font-style: italic; margin-top: 5px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     
     button[data-testid="stBaseButton-primary"] {
-        background-color: #ef4444 !important; color: white !important;
-        border: none !important; font-weight: 800 !important;
+        background-color: #ef4444 !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 800 !important;
     }
 
-    .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 60px; }
+    .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
     
-    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
+    .turnaround-card {
+        background: #1e293b;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        border-left: 4px solid #06b6d4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -134,7 +153,7 @@ if 'wc_matches' not in st.session_state:
 def auto_play():
     for m in st.session_state.wc_matches:
         if not m['fin']:
-            m['sh'], m['sa'] = random.randint(0, 4), random.randint(0, 4)
+            m['sh'], m['sa'] = random.randint(0, 5), random.randint(0, 5)
             m['y_h'], m['y_a'] = random.randint(0, 3), random.randint(0, 3)
             m['r_h'] = random.randint(0, 1) if random.random() > 0.9 else 0
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
@@ -158,7 +177,7 @@ def get_ai_prediction(model_id, prompt):
     model = genai.GenerativeModel(model_id)
     return model.generate_content(prompt).text
 
-# --- 6. HEADER ---
+# --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
 fin_m = [m for m in st.session_state.wc_matches if m['fin']]
 total_y = sum(m.get('y_h',0) + m.get('y_a',0) for m in fin_m)
@@ -181,7 +200,6 @@ with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary"
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
-# ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -226,7 +244,6 @@ with tabs[0]:
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v, "htft": htft_v})
                     st.rerun()
 
-# ΒΑΘΜΟΛΟΓΙΕΣ
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -251,13 +268,11 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
-# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
     t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
-    
     t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
     for m in t_matches:
         if m['fin']:
@@ -267,10 +282,8 @@ with tabs[2]:
             t_y += m.get('y_h',0) if is_h else m.get('y_a',0)
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
-    
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
     c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y)", t_y)
-    
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
@@ -280,21 +293,26 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
-# ΑΝΑΛΥΣΗ ΣΚΟΡ
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
-    # ΔΙΟΡΘΩΣΗ: Ακριβής διαχωρισμός Home-Away
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
-    for h_g in range(5):
-        cols_score = st.columns(5)
-        for a_g in range(5):
+    # Προσθήκη επιλογών 5+
+    grid_size = 6 # 0,1,2,3,4,5+
+    for h_g in range(grid_size):
+        cols_score = st.columns(grid_size)
+        for a_g in range(grid_size):
             with cols_score[a_g]:
-                current_score = (h_g, a_g)
-                count = actual_scores.count(current_score)
+                h_label = str(h_g) if h_g < 5 else "5+"
+                a_label = str(a_g) if a_g < 5 else "5+"
+                # Φιλτράρισμα: Αν h_g < 5 ψάχνουμε ακριβώς, αν h_g == 5 ψάχνουμε >= 5
+                def check(sh, sa, target_h, target_a):
+                    h_ok = (sh == target_h) if target_h < 5 else (sh >= 5)
+                    a_ok = (sa == target_a) if target_a < 5 else (sa >= 5)
+                    return h_ok and a_ok
+                count = sum(1 for sh, sa in actual_scores if check(sh, sa, h_g, a_g))
                 st_class = "score-out" if count > 0 else "score-delayed"
-                st.markdown(f"""<div class="score-box {st_class}">{h_g}-{a_g}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="score-box {st_class}">{h_label}-{a_label}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
-# ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m.get('turn','Καμία') != "Καμία"]
@@ -310,7 +328,6 @@ with tabs[4]:
             st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
-# ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ
 with tabs[5]:
     st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
     st.write("Εμφάνιση αποτελεσμάτων HT/FT (εξαιρούνται οι πλήρεις ανατροπές 1/2 και 2/1).")
