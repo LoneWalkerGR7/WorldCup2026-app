@@ -7,39 +7,45 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 
 # --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-supabase_url = st.secrets["SUPABASE_URL"]
-supabase_key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(supabase_url, supabase_key)
+try:
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(url, key)
+except:
+    st.error("Λείπουν τα κλειδιά της βάσης δεδομένων από τα Secrets!")
 
 def load_data():
     try:
         res = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        if res.data and res.data[0]['data']:
-            return res.data[0]['data']
-    except:
-        pass
+        if res.data and len(res.data) > 0:
+            content = res.data[0].get('data')
+            if content and len(content) > 0:
+                return content
+    except Exception as e:
+        st.error(f"Σφάλμα φόρτωσης: {e}")
     return None
 
 def save_data(data):
-    supabase.table("tournament_persistence").update({"data": data}).eq("id", 1).execute()
+    try:
+        supabase.table("tournament_persistence").update({"data": data}).eq("id", 1).execute()
+    except Exception as e:
+        st.error(f"Σφάλμα αποθήκευσης: {e}")
 
-# --- 1. CONFIG & CSS ---
+# --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
-
-st.markdown("""
-    <style>
+st.markdown("""<style>
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; text-transform: uppercase; }
+    button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     button[data-testid="stBaseButton-primary"] { background-color: #ef4444 !important; color: white !important; border: none !important; font-weight: 800 !important; }
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
-    </style>
-    """, unsafe_allow_html=True)
+    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
+</style>""", unsafe_allow_html=True)
 
 # --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
 TEAMS_MAP = {
@@ -114,6 +120,7 @@ if 'wc_matches' not in st.session_state:
     if db_data:
         st.session_state.wc_matches = db_data
     else:
+        # First Time Initialization
         matches = []
         for i, m_data in enumerate(RAW_MATCHES):
             matches.append({
@@ -123,6 +130,7 @@ if 'wc_matches' not in st.session_state:
                 "ref": "TBD", "turn": "Καμία", "htft": "TBD"
             })
         st.session_state.wc_matches = matches
+        save_data(matches) # Αποθήκευση στη βάση αμέσως
 
 # --- 5. FUNCTIONS ---
 def auto_play():
@@ -145,7 +153,7 @@ def auto_play():
 def reset():
     st.session_state.wc_matches = []
     del st.session_state['wc_matches']
-    save_data([])
+    save_data([]) # Μηδενισμός βάσης
     st.cache_data.clear()
     st.rerun()
 
@@ -260,7 +268,7 @@ with tabs[2]:
             if g > c: t_pts += 3
             elif g == c: t_pts += 1
     c_s1, c_s2, c_s3, c_s4 = st.columns(4)
-    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y)", t_y)
+    c_s1.metric("Points", t_pts); c_s2.metric("Goals", f"{t_gf}-{t_ga}"); c_s3.metric("Cards (Y-R)", f"{t_y}-{t_r}")
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
@@ -320,17 +328,155 @@ with tabs[6]:
     if api_key:
         try:
             genai.configure(api_key=api_key)
+            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ΜΕΣΩ ΑΝΑΖΗΤΗΣΗΣ ΓΙΑ ΑΠΟΦΥΓΗ 404
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
+            
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("Analyzing..."):
-                    advanced_prompt = f"""You are a top football analyst. Analyze match #{match_number} | {h_t} vs {a_t}. USER NOTES: {extra_notes}. Return deep prediction in Greek."""
+                    advanced_prompt = f"""
+Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
+
+Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+════════════════════════════════════════
+📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
+════════════════════════════════════════
+- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
+- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
+
+════════════════════════════════════════
+📋 ΟΔΗΓΙΕΣ ΠΡΟΗΓΜΕΝΗΣ ΑΝΑΛΥΣΗΣ
+════════════════════════════════════════
+
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ (Chain-of-Thought — εκτέλεσε ΟΛΑ)
+════════════════════════════════════════════════════════
+ 
+── ΒΗΜΑ 1: ΠΕΡΙΒΑΛΛΟΝ & ΔΙΑΙΤΗΣΙΑ ──────────────────────
+• Εντόπισε τον ορισθέντα διαιτητή του αγώνα (web search αν χρειάζεται).
+• Στατιστικά διαιτητή: κάρτες/90', πέναλτι/αγώνα, red cards/αγώνα, στυλ.
+• Καιρός: θερμοκρασία (°C), υγρασία (%), άνεμος, βροχή.
+→ Συμπέρανε: πόσες κάρτες αναμένεις, πιθανότητα πέναλτι, επίδραση καιρού στο πρέσινγκ.
+ 
+── ΒΗΜΑ 2: ΔΥΝΑΜΙΚΗ ΤΟΥΡΝΟΥΑ (ΠΡΟΤΕΡΑΙΟΤΗΤΑ Νο1) ──────
+• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026, άντλησε:
+  - xG & xGOT | Σουτ: Σύνολο/Στόχο/Blocked/Εντός-Εκτός Περιοχής
+  - PPDA | Progressive passes | Aerial duels % | Δοκάρια
+  - IN-PLAY PROFILE: πώς παίζει όταν προηγείται / υστερεί
+  - Γκολ ανά ημίχρονο (1ο vs 2ο τάση)
+• Αν είναι 1ος αγώνας: τελευταίοι 10 επίσημοι + προκριματικά.
+
+2. ΔΥΝΑΜΙΚΗ ΦΟΡΜΑ ΤΟΥΡΝΟΥΑ (Από τη 2η Αγωνιστική & μετά - ΚΡΙΣΙΜΟ):
+   - Αν οι ομάδες έχουν ήδη παίξει παιχνίδι/α στο Μουντιάλ 2026, η ανάλυση πρέπει να δώσει προτεραιότητα σε αυτά τα data έναντι των προκριματικών.
+   - Ενσωμάτωσε υποχρεωτικά τις εξής advanced μετρικές από τα τρέχοντα παιχνίδια τους στη διοργάνωση:
+     * Αναμενόμενα γκολ (xG) & xG στο στόχο (xGOT) για την ποιότητα των τελειωμάτων.
+     * Συνολικά Σουτ, Σουτ στο στόχο, Άστοχα και Κομμένα (Blocked) σουτ.
+     * Κατανομή: Σουτ εντός περιοχής vs Σουτ εκτός περιοχής.
+     * Αποτελεσματικότητα στον αέρα (Γκολ με κεφαλιά) και ατυχία (Δοκάρια).
+
+3. ΔΙΑΘΕΣΙΜΟΤΗΤΑ ΠΑΙΚΤΩΝ: Τραυματισμοί, τιμωρίες, επιστροφές της τελευταίας στιγμής (λαμβάνοντας υπόψη τις σημειώσεις του χρήστη).
+
+4. HEAD-TO-HEAD & ΙΣΤΟΡΙΚΟ ΜΟΤΙΒΟ ΑΓΩΝΑ #{match_number}: 
+   - Προηγούμενες αναμετρήσεις των δύο ομάδων.
+   - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα (#{match_number}) στα Μουντιάλ 2022, 2018 και 2014 (π.χ. αν παραδοσιακά ο αγώνας αυτός βγάζει πολλά γκολ, εκπλήξεις ή κόκκινες).
+
+5. ΤΑΚΤΙΚΗ ΑΝΑΛΥΣΗ: Συστήματα (π.χ. 4-3-3, 3-5-2), transition, build-up, ευάλωτες ζώνες στην άμυνα και tactical matchup των key-players.
+
+════════════════════════════════════════
+📤 ΜΟΡΦΗ ΑΠΑΝΤΗΣΗΣ (αποκλειστικά Ελληνικά, Markdown)
+════════════════════════════════════════
+
+## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
+
+---
+
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Κλιματικές Συνθήκες
+(Ανάλυση διαιτητή, καρτών, θερμοκρασίας/υγρασίας και η επίδρασή τους στο ρυθμό)
+
+### 🏥 Διαθεσιμότητα, Ρόστερ & Last-Minute Updates
+(Ενσωμάτωση σημειώσεων χρήστη και απουσιών/επιστροφών)
+
+### 📊 Προηγμένη Ανάλυση Data & xG (Τρέχουσα Εικόνα)
+(Εδώ ανάλυσε τη φόρμα. Αν είναι το 2ο+ παιχνίδι, κάνε ενδελεχή χρήση των xG, xGOT, κατανομής σουτ εντός/εκτός περιοχής, blocked shots, δοκαριών και κεφαλιών από τα ματς του Μουντιάλ. Αν είναι το 1ο ματς, βασίσου στα τελευταία 10 επίσημα)
+
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+(Η ιστορική αναδρομή του συγκεκριμένου slot αγώνα στις προηγούμενες διοργανώσεις)
+
+### 🔮 Προηγμένο Μοντέλο Πρόβλεψης & Πιθανότητες
+(Υπολόγισε τις πιθανότητες με βάση τα advanced metrics που ανέλυσες παραπάνω)
+
+### 📋 Περιβάλλον Αγώνα
+| Παράμετρος | Τιμή | Επίδραση |
+|------------|------|----------|
+| Διαιτητής | Όνομα (χώρα) | Αυστηρός/Επιεικής |
+| Κάρτες/αγώνα | X.X 🟨 / X.X 🟥 | ... |
+| Πέναλτι/αγώνα | X.XX | ... |
+| Θερμοκρασία | X°C | ... |
+| Υγρασία | X% | ... |
+| Υψόμετρο | Xm | ... |
+ 
+### 🏥 Ρόστερ & Διαθεσιμότητα
+**{h_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
+**{a_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
+> 🔄 Σενάριο απουσίας: Αν λείπει ο [X], η πιθανότητα [Y] αλλάζει κατά ~X%
+ 
+### 📊 Advanced Data & xG Dashboard
+| Μετρική | {h_t} | {a_t} | Πλεονέκτημα |
+|---------|--------|--------|-------------|
+| xG | X.XX | X.XX | → |
+| xGOT | X.XX | X.XX | → |
+| Σουτ σύνολο | XX | XX | → |
+| Σουτ στόχο | XX | XX | → |
+| Εντός περιοχής | XX% | XX% | → |
+| PPDA | X.X | X.X | → |
+| Δοκάρια | X | X | → |
+| Γκολ 1ο ημίχρονο | X | X | → |
+| Γκολ 2ο ημίχρονο | X | X | → |
+ 
+### ⚔️ Τακτική & Key Matchups
+**Σχηματισμοί:** {h_t} [X-X-X] vs {a_t} [X-X-X]
+- 🔑 Matchup #1: [A] vs [B] → [νικητής + λόγος]
+- 🔑 Matchup #2: [C] vs [D] → [νικητής + λόγος]
+- ⚠️ Ευάλωτη ζώνη {h_t}: [...]
+- ⚠️ Ευάλωτη ζώνη {a_t}: [...]
+- 🎯 Set pieces: [ποια ομάδα πλεονεκτεί]
+ 
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
+|------------|--------|------|------|--------|---------|
+| 2022 | A vs B | X-X | X | XY/XR | ... |
+| 2018 | C vs D | X-X | X | XY/XR | ... |
+| 2014 | E vs F | X-X | X | XY/XR | ... |
+ 
+### 🔮 Quantitative Prediction Model
+| Κατηγορία | Πρόβλεψη | Πιθανότητα | Βάση | Confidence |
+|-----------|----------|------------|------|------------|
+| Αποτέλεσμα (1-X-2) | {h_t}/Ισοπαλία/{a_t} | XX%/XX%/XX% | Bayesian xG | X/10 |
+| Πιο πιθανό σκορ | X-X | XX% | Poisson | X/10 |
+| Over 2.5 Goals | Ναι/Όχι | XX% | Συνολικό xG | X/10 |
+| BTTS | Ναι/Όχι | XX% | Επιθ/Αμυν profile | X/10 |
+| Over 9.5 Κάρτες | Ναι/Όχι | XX% | Referee + Ένταση | X/10 |
+| Πέναλτι | Ναι/Όχι | XX% | Ref + Box attacks | X/10 |
+| Κόκκινη Κάρτα | Ναι/Όχι | XX% | Ref + H2H | X/10 |
+| Ανατροπή (In-play) | Ναι/Όχι | XX% | In-play profile | X/10 |
+| Γκολ 1ου ημιχρόνου | Ναι/Όχι | XX% | 1ο ημίχρονο τάση | X/10 |
+ 
+> 💡 **Value Bets:** [ποια πρόβλεψη έχει probability > implied probability αγοράς]
+ 
+### 🎯 Στρατηγικό Συμπέρασμα
+[3-4 προτάσεις: πού κρίνεται ο αγώνας, ποιο matchup καθορίζει, ποιος παράγοντας έχει τη μεγαλύτερη επίδραση]
+ 
+**Συνολικό Confidence Score: X/10**
+"""
                     ans = get_ai_prediction(working_model, advanced_prompt)
-                    st.markdown("---"); st.markdown(ans)
+                    st.markdown("---")
+                    st.markdown(ans)
         except Exception as e: st.error(f"Error: {e}")
