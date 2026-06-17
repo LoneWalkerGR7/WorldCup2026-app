@@ -342,9 +342,9 @@ with tabs[6]:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
             
-            # --- Δυναμική επιλογή σωστού μοντέλου για αποφυγή 404 ---
-            # Το εργαλείο αναζήτησης απαιτεί συγκεκριμένα μοντέλα στην έκδοση v1beta
-            SELECTED_MODEL = "gemini-1.5-flash" # Δοκιμάζουμε το πιο σταθερό
+            # --- 1. ΟΡΙΣΜΟΣ ΜΟΝΤΕΛΟΥ ---
+            # Χρησιμοποιούμε το flash για ταχύτητα στο search
+            SELECTED_MODEL = "gemini-1.5-flash" 
 
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -353,22 +353,8 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🌐 Σύνδεση με FIFA Data & Web Search..."):
-                    
-                    # --- ΟΡΙΣΜΟΣ ΤΟΥ SEARCH TOOL (GROUNDING) ---
-                    # Αυτή είναι η σωστή σύνταξη για να κάνει ΠΡΑΓΜΑΤΙΚΟ Google Search
-                    tools = [{"google_search": {}}]
-                    
-                    try:
-                        # Δημιουργία μοντέλου με το εργαλείο αναζήτησης
-                        model = genai.GenerativeModel(
-                            model_name=SELECTED_MODEL,
-                            tools=tools
-                        )
-
-                        # --- ΤΟ ΔΙΚΟ ΣΟΥ ADVANCED PROMPT ---
-                        advanced_prompt = f"""
+            # --- 2. ΟΡΙΣΜΟΣ ΤΟΥ PROMPT (ΕΚΤΟΣ TRY ΓΙΑ ΑΠΟΦΥΓΗ NAMEERROR) ---
+            advanced_prompt = f"""
 ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
@@ -382,9 +368,9 @@ with tabs[6]:
 - ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
 
 🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα.
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα στην πόλη διεξαγωγής.
 2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026.
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match 26 of World Cup 2022 score", κλπ).
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match {match_number} of World Cup 2022 score", κλπ).
 
 ΑΠΑΝΤΗΣΗ (Ελληνικά):
 ## ⚽ {h_t} vs {a_t}
@@ -401,24 +387,32 @@ with tabs[6]:
 | Κόκκινη | Ναι/Όχι | XX% |
 | Ανατροπή | Ναι/Όχι | XX% |
 """
-                        
-                        # Κλήση με το prompt
+
+            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
+                with st.spinner("🌐 Σύνδεση με FIFA Data & Web Search..."):
+                    
+                    try:
+                        # --- 3. ΠΡΟΣΠΑΘΕΙΑ ΜΕ GOOGLE SEARCH ---
+                        # Χρησιμοποιούμε τη νεότερη μέθοδο εργαλείου
+                        model = genai.GenerativeModel(
+                            model_name=SELECTED_MODEL,
+                            tools=[{"google_search": {}}]
+                        )
                         response = model.generate_content(advanced_prompt)
                         
                         st.markdown("---")
                         if response.text:
                             st.markdown(response.text)
-                            # Εμφάνιση πηγών αν υπάρχουν (Grounding Metadata)
-                            if response.candidates[0].grounding_metadata.search_entry_point:
-                                st.caption("🔍 Πηγές: Δεδομένα από Google Search")
                         else:
                             st.error("Το AI δεν επέστρεψε κείμενο.")
                             
                     except Exception as e_inner:
-                        # Αν το tool προκαλέσει σφάλμα (π.χ. region restriction), κάνουμε αυτόματη υποχώρηση
-                        st.warning("⚠️ Το Search Tool δεν είναι διαθέσιμο αυτή τη στιγμή. Εκτελώ ανάλυση βάσει εκπαιδευμένων δεδομένων...")
+                        # --- 4. FALLBACK ΑΝ ΤΟ SEARCH ΑΠΟΤΥΧΕΙ ---
+                        st.warning("⚠️ Το Search Tool δεν είναι διαθέσιμο. Εκτελώ ανάλυση βάσει εκπαιδευμένων δεδομένων...")
+                        # Εδώ το advanced_prompt είναι πλέον ορισμένο, οπότε δεν θα βγάλει NameError
                         model_simple = genai.GenerativeModel(model_name=SELECTED_MODEL)
                         response = model_simple.generate_content(advanced_prompt)
+                        st.markdown("---")
                         st.markdown(response.text)
 
         except Exception as e:
