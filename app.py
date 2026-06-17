@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 
-# --- ΣΥΝΔΕΣΗ ΜΕ ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ (SUPABASE) ---
+# --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
@@ -15,7 +15,7 @@ supabase: Client = create_client(url, key)
 def load_from_db():
     try:
         response = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        if response.data and len(response.data) > 0:
+        if response.data and response.data[0]['data']:
             raw_data = response.data[0]['data']
             if isinstance(raw_data, str):
                 return json.loads(raw_data)
@@ -28,7 +28,7 @@ def save_to_db(data):
     try:
         supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
-        st.error(f"Σφάλμα αποθήκευσης: {e}")
+        st.error(f"Σφάλμα αποθήκευσης στη βάση: {e}")
 
 # --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
@@ -40,7 +40,6 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
     div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
     div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
@@ -122,10 +121,10 @@ RAW_MATCHES = [
 ]
 
 # --- 4. SESSION STATE ---
-if 'wc_matches' not in st.session_state:
-    db_data = load_from_db()
-    if db_data:
-        st.session_state.wc_matches = db_data
+def init_session():
+    data = load_from_db()
+    if data:
+        st.session_state.wc_matches = data
     else:
         matches = []
         for i, m_data in enumerate(RAW_MATCHES):
@@ -137,6 +136,9 @@ if 'wc_matches' not in st.session_state:
             })
         st.session_state.wc_matches = matches
 
+if 'wc_matches' not in st.session_state:
+    init_session()
+
 # --- 5. FUNCTIONS ---
 def auto_play():
     for m in st.session_state.wc_matches:
@@ -147,7 +149,7 @@ def auto_play():
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
-            res = "X"
+            res = "X"; 
             if m['sh'] > m['sa']: res = "1"
             elif m['sa'] > m['sh']: res = "2"
             m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
@@ -332,7 +334,7 @@ with tabs[6]:
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ΜΕΣΩ ΑΝΑΖΗΤΗΣΗΣ ΓΙΑ ΑΠΟΦΥΓΗ 404
+            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
             
