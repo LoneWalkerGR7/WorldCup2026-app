@@ -333,18 +333,18 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Live Web Data Edition)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Live Grounding Edition)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # ΕΝΕΡΓΟΠΟΙΗΣΗ GOOGLE SEARCH TOOL
-            tools = [{"google_search": {}}] 
-            # Χρήση μοντέλου που υποστηρίζει σίγουρα tools (π.χ. 1.5 Flash ή Pro)
+            # ΔΙΟΡΘΩΣΗ: Το σωστό εργαλείο ονομάζεται google_search_retrieval
+            tools = [{"google_search_retrieval": {}}] 
+            
             model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
+                model_name='gemini-1.5-flash', # ή gemini-1.5-pro
                 tools=tools
             )
             
@@ -353,42 +353,45 @@ with tabs[6]:
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Καιρός, απουσίες...")
-            
+            extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Η Γερμανία έχει 2 τιμωρημένους...")
+
+            # Προετοιμασία των δεδομένων του δικού μας τουρνουά για το AI
+            finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
+            context_data = ""
+            for fm in finished_matches:
+                h_n = TEAMS_MAP[fm['h_id']]['n']
+                a_n = TEAMS_MAP[fm['a_id']]['n']
+                context_data += f"Αγώνας: {h_n} {fm['sh']}-{fm['sa']} {a_n} (Κάρτες {fm['y_h']}:{fm['y_a']})\n"
+
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Πραγματοποιώ αναζήτηση στο Web για live δεδομένα..."):
+                with st.spinner("Συνδυάζω τα δεδομένα του Portal με ζωντανή αναζήτηση..."):
                     
-                    # ΝΕΟ PROMPT ΜΕ ΕΜΦΑΣΗ ΣΤΟ SEARCH
-                    rigorous_prompt = f"""
-                    SYSTEM INSTRUCTION: You must use the Google Search tool before answering. 
-                    The current date is {datetime.now().strftime('%Y-%m-%d')}.
-                    The World Cup 2026 is currently ongoing. 
+                    full_prompt = f"""
+                    ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ: {datetime.now().strftime('%d/%m/%2026')} (Simulation Time)
                     
-                    TASK: Analyze Match #{match_number}: {h_t} vs {a_t}.
+                    ΔΕΔΟΜΕΝΑ ΤΟΥΡΝΟΥΑ (Μέχρι τώρα στο Portal):
+                    {context_data if context_data else "Δεν έχουν γίνει ακόμα αγώνες."}
                     
-                    STEP 1: Use Google Search to find the ACTUAL results and stats of the PREVIOUS matches of {h_t} and {a_t} in World Cup 2026.
-                    STEP 2: Search for the official lineup, referee assignments, and injury reports for this specific match.
-                    STEP 3: If the match has not happened yet, get the latest xG and performance data from their first group match.
+                    ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση για τον Αγώνα #{match_number}: {h_t} vs {a_t}
                     
-                    CRITICAL RULE: Do NOT say "since the tournament hasn't happened". The tournament IS happening NOW. If you cannot find data, state "Data not yet updated in search results" but DO NOT invent historical filler.
+                    ΟΔΗΓΙΕΣ:
+                    1. Χρησιμοποίησε το Google Search για να βρεις την πραγματική ποιότητα των ρόστερ των ομάδων (παίκτες, τραυματισμοί, πρόσφατη φόρμα στην πραγματικότητα).
+                    2. Σύγκρινε τα παραπάνω με τα αποτελέσματα που σου έδωσα από το δικό μου Portal (αν υπάρχουν).
+                    3. Κάνε μια επαγγελματική στοιχηματική πρόβλεψη (Σκορ, Over/Under, Κάρτες).
+                    4. Μην πεις "το Μουντιάλ δεν έχει γίνει". Συμπεριφέρσου σαν να είμαστε στις 17 Ιουνίου 2026.
                     
-                    OUTPUT SECTIONS (In Greek):
-                    1. 🌐 Live Search Verification (Τι βρέθηκε στο διαδίκτυο τώρα)
-                    2. 📊 Ανάλυση Προηγούμενου Αγώνα WC2026 (Σκορ, xG, Κάρτες)
-                    3. ⚖️ Διαιτητής & Συνθήκες (Από live search)
-                    4. 🔮 Πρόβλεψη βάσει Φόρμας Διοργάνωσης
-                    5. 🎯 Betting Value
+                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
                     
-                    Additional Notes: {extra_notes}
+                    Απάντησε στα Ελληνικά με Markdown.
                     """
                     
-                    # Κλήση με tools
-                    response = model.generate_content(rigorous_prompt)
+                    response = model.generate_content(full_prompt)
                     
                     st.markdown("---")
-                    # Εμφάνιση της απάντησης
                     if response.text:
                         st.markdown(response.text)
                     else:
-                        st.warning("Το μοντέλο δεν επέστρεψε κείμενο. Δοκιμάστε ξανά.")
-        except Exception as e: st.error(f"AI Connection Error: {e}")
+                        st.error("Το AI δεν μπόρεσε να απαντήσει. Δοκίμασε χωρίς το Google Search ή έλεγξε το API Key.")
+                        
+        except Exception as e: 
+            st.error(f"Σφάλμα: {e}")
