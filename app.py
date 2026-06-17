@@ -7,15 +7,18 @@ import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 
-# --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
+# --- ΣΥΝΔΕΣΗ ΜΕ ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ (SUPABASE) ---
+try:
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(url, key)
+except Exception as e:
+    st.error("🚨 Σφάλμα Secrets: Βεβαιωθείτε ότι έχετε βάλει σωστά τα SUPABASE_URL και SUPABASE_KEY.")
 
 def load_from_db():
     try:
         response = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        if response.data and response.data[0]['data']:
+        if response.data and len(response.data) > 0:
             raw_data = response.data[0]['data']
             if isinstance(raw_data, str):
                 return json.loads(raw_data)
@@ -28,7 +31,7 @@ def save_to_db(data):
     try:
         supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
-        st.error(f"Σφάλμα αποθήκευσης στη βάση: {e}")
+        st.error(f"Σφάλμα αποθήκευσης: {e}")
 
 # --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
@@ -40,8 +43,8 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
     div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
-    div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
@@ -123,7 +126,7 @@ RAW_MATCHES = [
 # --- 4. SESSION STATE ---
 def init_session():
     data = load_from_db()
-    if data:
+    if data and len(data) > 0:
         st.session_state.wc_matches = data
     else:
         matches = []
@@ -149,7 +152,7 @@ def auto_play():
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
-            res = "X"; 
+            res = "X"
             if m['sh'] > m['sa']: res = "1"
             elif m['sa'] > m['sh']: res = "2"
             m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
@@ -171,7 +174,7 @@ def get_ai_prediction(model_id, prompt):
 
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
-fin_m = [m for m in st.session_state.wc_matches if m['fin']]
+fin_m = [m for m in st.session_state.wc_matches if m.get('fin')]
 total_y = sum(m.get('y_h',0) + m.get('y_a',0) for m in fin_m)
 total_r = sum(m.get('r_h',0) + m.get('r_a',0) for m in fin_m)
 total_p = sum(m.get('p_h',0) + m.get('p_a',0) for m in fin_m)
@@ -179,7 +182,7 @@ total_og = sum(m.get('og_h',0) + m.get('og_a',0) for m in fin_m)
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
-with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m["sh"]+m["sa"] for m in fin_m if m["sh"] is not None)}</div><div class="stat-label">⚽Goals</div></div>', unsafe_allow_html=True)
+with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m.get("sh",0)+m.get("sa",0) for m in fin_m if m.get("sh") is not None)}</div><div class="stat-label">⚽Goals</div></div>', unsafe_allow_html=True)
 with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{total_y}</div><div class="stat-label">🟨Yellow</div></div>', unsafe_allow_html=True)
 with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{total_r}</div><div class="stat-label">🟥Red</div></div>', unsafe_allow_html=True)
 with c5: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#22d3ee!important">{total_p}</div><div class="stat-label">🎯Pens</div></div>', unsafe_allow_html=True)
@@ -212,13 +215,13 @@ with tabs[0]:
                     🟨 {m.get('y_h',0)}:{m.get('y_a',0)} | 🟥 {m.get('r_h',0)}:{m.get('r_a',0)} | 🎯 {m.get('p_h',0)}:{m.get('p_a',0)} | ⚠️ {m.get('og_h',0)}:{m.get('og_a',0)}
                 </div>
                 <div style="font-size:9px; color:#94a3b8; text-align:center; padding-top:2px;">
-                    🏁 Ref: {m.get('ref','TBD')} | 📍 {m['st']} | 🔄 {m.get('turn','Καμία')} | 🌓 {m.get('htft','TBD')}
+                    🏁 Ref: {m.get('ref','TBD')} | 📍 {m.get('st','TBD')} | 🔄 {m.get('turn','Καμία')} | 🌓 {m.get('htft','TBD')}
                 </div>
             </div>""", unsafe_allow_html=True)
             with st.expander("✏️ Επεξεργασία"):
                 ch, ca = st.columns(2)
-                sh_v = ch.number_input(f"Goals {h['n']}", 0, 15, m['sh'] if m['sh'] is not None else 0, key=f"sh{m['id']}")
-                sa_v = ca.number_input(f"Goals {a['n']}", 0, 15, m['sa'] if m['sa'] is not None else 0, key=f"sa{m['id']}")
+                sh_v = ch.number_input(f"Goals {h['n']}", 0, 15, m.get('sh',0) if m.get('sh') is not None else 0, key=f"sh{m['id']}")
+                sa_v = ca.number_input(f"Goals {a['n']}", 0, 15, m.get('sa',0) if m.get('sa') is not None else 0, key=f"sa{m['id']}")
                 yh_v = ch.slider(f"Yellow {h['n']}", 0, 10, m.get('y_h',0), key=f"yh{m['id']}")
                 ya_v = ca.slider(f"Yellow {a['n']}", 0, 10, m.get('y_a',0), key=f"ya{m['id']}")
                 rh_v = ch.number_input(f"Red {h['n']}", 0, 5, m.get('r_h',0), key=f"rh{m['id']}")
@@ -247,9 +250,9 @@ with tabs[1]:
                 team = TEAMS_MAP[tid]
                 pts, gd, y, r = 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
-                    if m['fin'] and (m['h_id'] == tid or m['a_id'] == tid):
-                        is_h = m['h_id'] == tid
-                        h_s, a_s = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+                    if m.get('fin') and (m.get('h_id') == tid or m.get('a_id') == tid):
+                        is_h = m.get('h_id') == tid
+                        h_s, a_s = (m.get('sh',0), m.get('sa',0)) if is_h else (m.get('sa',0), m.get('sh',0))
                         y += m.get('y_h',0) if is_h else m.get('y_a',0)
                         r += m.get('r_h',0) if is_h else m.get('r_a',0)
                         gd += (h_s - a_s)
@@ -263,12 +266,12 @@ with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
     team_id = next(k for k,v in TEAMS_MAP.items() if v['n'] == sel_t)
-    t_matches = [m for m in st.session_state.wc_matches if (m['h_id'] == team_id or m['a_id'] == team_id)]
+    t_matches = [m for m in st.session_state.wc_matches if (m.get('h_id') == team_id or m.get('a_id') == team_id)]
     t_pts, t_gf, t_ga, t_y, t_r = 0, 0, 0, 0, 0
     for m in t_matches:
-        if m['fin']:
-            is_h = m['h_id'] == team_id
-            g, c = (m['sh'], m['sa']) if is_h else (m['sa'], m['sh'])
+        if m.get('fin'):
+            is_h = m.get('h_id') == team_id
+            g, c = (m.get('sh',0), m.get('sa',0)) if is_h else (m.get('sa',0), m.get('sh',0))
             t_gf += g; t_ga += c
             t_y += m.get('y_h',0) if is_h else m.get('y_a',0)
             if g > c: t_pts += 3
@@ -278,15 +281,15 @@ with tabs[2]:
     cols_team = st.columns(3)
     for idx, m in enumerate(t_matches):
         with cols_team[idx % 3]:
-            res_col = "#10b981" if m['fin'] else "#1e293b"
-            h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
+            res_col = "#10b981" if m.get('fin') else "#1e293b"
+            h_n = TEAMS_MAP[m.get('h_id')]['n']; a_n = TEAMS_MAP[m.get('a_id')]['n']
             st.markdown(f"""<div class="match-card" style="border-top:4px solid {res_col}">
-            <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
+            <b>Αγώνας {idx+1}</b><br>{h_n} {m.get('sh') if m.get('sh') is not None else ''} - {m.get('sa') if m.get('sa') is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
-    actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
+    actual_scores = [(m.get('sh'), m.get('sa')) for m in st.session_state.wc_matches if m.get('fin')]
     grid_size = 6 
     for h_g in range(grid_size):
         cols_score = st.columns(grid_size)
@@ -295,6 +298,7 @@ with tabs[3]:
                 h_label = str(h_g) if h_g < 5 else "5+"
                 a_label = str(a_g) if a_g < 5 else "5+"
                 def check(sh, sa, target_h, target_a):
+                    if sh is None or sa is None: return False
                     h_ok = (sh == target_h) if target_h < 5 else (sh >= 5)
                     a_ok = (sa == target_a) if target_a < 5 else (sa >= 5)
                     return h_ok and a_ok
@@ -304,23 +308,23 @@ with tabs[3]:
 
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
-    t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m.get('turn','Καμία') != "Καμία"]
+    t_fin = [m for m in st.session_state.wc_matches if m.get('fin') and m.get('turn','Καμία') != "Καμία"]
     t_col1, t_col2, t_col3 = st.columns(3)
-    half_turns = [m for m in t_fin if m['turn'] in ["Home SCORE First and LOSE", "Away SCORE First and LOSE"]]
+    half_turns = [m for m in t_fin if m.get('turn') in ["Home SCORE First and LOSE", "Away SCORE First and LOSE"]]
     t_col1.metric("Σύνολο Ημιανατροπών", len(half_turns))
-    t_col2.metric("Ανατροπή 1/2", len([m for m in t_fin if m['turn'] == "1/2"]))
-    t_col3.metric("Ανατροπή 2/1", len([m for m in t_fin if m['turn'] == "2/1"]))
+    t_col2.metric("Ανατροπή 1/2", len([m for m in t_fin if m.get('turn') == "1/2"]))
+    t_col3.metric("Ανατροπή 2/1", len([m for m in t_fin if m.get('turn') == "2/1"]))
     st.write("---")
     if t_fin:
         for m in t_fin:
-            h_n = TEAMS_MAP[m['h_id']]['n']; a_n = TEAMS_MAP[m['a_id']]['n']
-            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
+            h_n = TEAMS_MAP[m.get('h_id')]['n']; a_n = TEAMS_MAP[m.get('a_id')]['n']
+            st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m.get('turn')}</span><br><b>{h_n} {m.get('sh')} - {m.get('sa')} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
 with tabs[5]:
     st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
     htft_types = ["1/1", "1/X", "X/1", "X/X", "X/2", "2/X", "2/2"]
-    all_htft = [m.get('htft','TBD') for m in st.session_state.wc_matches if m['fin'] and m.get('htft','TBD') in htft_types]
+    all_htft = [m.get('htft','TBD') for m in st.session_state.wc_matches if m.get('fin') and m.get('htft','TBD') in htft_types]
     cols_htft = st.columns(7)
     for idx, t_type in enumerate(htft_types):
         with cols_htft[idx]:
@@ -348,38 +352,10 @@ with tabs[6]:
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("Analyzing..."):
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
-
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
-
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει.
-2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων.
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
-
-ΑΠΑΝΤΗΣΗ (Ελληνικά):
-## ⚽ {h_t} vs {a_t}
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-### 🏥 Διαθεσιμότητα & Σημειώσεις
-### 📊 Data & xG Analysis
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα |
-|-----------|----------|------------|
-| 1-X-2 | ... | XX% |
-| Σκορ | X-X | — |
-| Πέναλτι | Ναι/Όχι | XX% |
-| Κόκκινη | Ναι/Όχι | XX% |
-| Ανατροπή | Ναι/Όχι | XX% |
-"""
+                    Είσαι ένας elite football analyst. Μεθοδολογία Web Search. Αγώνας #{match_number} | {h_t} vs {a_t}. 
+                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
+                    Return deep prediction in Greek using Markdown.
+                    """
                     ans = get_ai_prediction(working_model, advanced_prompt)
-                    st.markdown("---")
-                    st.markdown(ans)
+                    st.markdown("---"); st.markdown(ans)
         except Exception as e: st.error(f"AI Connection Error: {e}")
