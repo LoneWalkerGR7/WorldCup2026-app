@@ -342,8 +342,7 @@ with tabs[6]:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
             
-            # --- ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ (ΑΦΑΙΡΕΣΗ ΠΡΟΘΕΜΑΤΟΣ ΓΙΑ ΑΠΟΦΥΓΗ 404) ---
-            # Χρησιμοποιούμε το σκέτο όνομα, το API θα το βρει αυτόματα
+            # Χρησιμοποιούμε το όνομα χωρίς το "models/" για αποφυγή του 404
             MODEL_ID = "gemini-1.5-flash" 
 
             c1, c2 = st.columns(2)
@@ -369,8 +368,8 @@ with tabs[6]:
 
 🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
 1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα στην πόλη διεξαγωγής.
-2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026 (χρησιμοποίησε Google Search).
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match {match_number} of World Cup 2022 score", κλπ).
+2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match 26 of World Cup 2022 score", "Match 26 of World Cup 2018 score").
 
 ΑΠΑΝΤΗΣΗ (Ελληνικά):
 ## ⚽ {h_t} vs {a_t}
@@ -389,24 +388,25 @@ with tabs[6]:
 """
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("📡 Πραγματοποιώ Web Search (Live FIFA Data)..."):
-                    
+                with st.spinner("📡 Πραγματοποιώ Web Search (FIFA Live Data)..."):
                     try:
-                        # Χρήση του google_search tool (grounding)
-                        # ΣΗΜΑΝΤΙΚΟ: Χρησιμοποιούμε τη σταθερή έκδοση 'v1' αν η 'v1beta' έχει θέμα
+                        # Προσπάθεια με Google Search Tool
                         model = genai.GenerativeModel(
                             model_name=MODEL_ID,
                             tools=[{"google_search": {}}]
                         )
-                        
                         response = model.generate_content(advanced_prompt)
-                        
                         st.markdown("---")
                         if response.text:
                             st.markdown(response.text)
                         else:
-                            st.error("Το AI δεν επέστρεψε περιέχομενο.")
-
+                            st.error("Το AI δεν επέστρεψε κείμενο.")
                     except Exception as e_inner:
-                        # --- FALLBACK ΣΕ ΠΕΡΙΠΤΩΣΗ ΠΟΥ ΤΟ API ΜΠΛΟΚΑΡΕΙ ΤΟ SEARCH ---
-                        st.war
+                        # Fallback αν το search tool αποτύχει (π.χ. 404 ή region error)
+                        st.warning("⚠️ Το Google Search Tool είναι προσωρινά μη διαθέσιμο. Εκτελώ ανάλυση με εσωτερικά δεδομένα...")
+                        model_fallback = genai.GenerativeModel(model_name=MODEL_ID)
+                        response_fallback = model_fallback.generate_content(advanced_prompt)
+                        st.markdown("---")
+                        st.markdown(response_fallback.text)
+        except Exception as e:
+            st.error(f"❌ Σφάλμα: {e}")
