@@ -340,9 +340,18 @@ with tabs[6]:
         try:
             genai.configure(api_key=api_key)
             
-            # Επιλογή μοντέλου - Δοκιμάζουμε το 1.5-flash που είναι το πιο σταθερό
-            MODEL_ID = "gemini-1.5-flash" 
+            # --- ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
+            # Ανιχνεύουμε ποια ονόματα μοντέλων δέχεται το API σου
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
+            # Επιλέγουμε το καλύτερο διαθέσιμο (προτεραιότητα στο 1.5-flash)
+            if 'models/gemini-1.5-flash' in available_models:
+                SELECTED_MODEL = 'models/gemini-1.5-flash'
+            elif 'models/gemini-1.5-pro' in available_models:
+                SELECTED_MODEL = 'models/gemini-1.5-pro'
+            else:
+                SELECTED_MODEL = available_models[0] # Fallback στο πρώτο διαθέσιμο
+
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
@@ -359,53 +368,28 @@ with tabs[6]:
                 context_data += f"Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Αναλύω δεδομένα και ιστορικό..."):
+                with st.spinner(f"Αναλύω δεδομένα με το μοντέλο {SELECTED_MODEL}..."):
                     
-                    # Προσπάθεια δημιουργίας μοντέλου ΜΕ Google Search
+                    # Προσπάθεια κλήσης ΜΕ Google Search (grounding)
+                    # Χρησιμοποιούμε τη νέα σύνταξη που είναι πιο σταθερή
                     try:
-                        # Δοκιμή με το εργαλείο 'google_search_retrieval' στη νέα του μορφή
                         model = genai.GenerativeModel(
-                            model_name=MODEL_ID,
+                            model_name=SELECTED_MODEL,
                             tools=[{"google_search_retrieval": {}}]
                         )
-                        use_search = True
-                    except:
-                        # Αν αποτύχει, fallback στο απλό μοντέλο
-                        model = genai.GenerativeModel(MODEL_ID)
-                        use_search = False
-                    
-                    full_prompt = f"""
-                    CONTEXT: World Cup 2026 Simulation. 
-                    CURRENT DATE: June 17, 2026.
-                    PORTAL DATA (Results so far):
-                    {context_data if context_data else "No matches played yet."}
-                    
-                    UPCOMING MATCH: #{match_number} | {h_t} vs {a_t}
-                    USER NOTES: {extra_notes}
-                    
-                    INSTRUCTIONS:
-                    1. Act as a pro football betting analyst.
-                    2. Use your internal knowledge of these teams' real-world quality and rosters.
-                    3. Combine this with the Portal results provided above.
-                    4. Provide: 
-                       - Brief tactical analysis.
-                       - Score prediction.
-                       - Betting tip (e.g., Over 2.5, BTTS, or 1X2).
-                    5. Language: Greek.
-                    6. Never mention that the tournament hasn't happened yet.
-                    """
-                    
-                    try:
-                        response = model.generate_content(full_prompt)
-                        st.markdown("---")
-                        if response.text:
-                            if not use_search:
-                                st.caption("⚠️ Σημείωση: Η ανάλυση έγινε χωρίς ζωντανή αναζήτηση λόγω περιορισμών του API Key.")
-                            st.markdown(response.text)
-                        else:
-                            st.error("Το AI επέστρεψε κενή απάντηση.")
+                        prompt_content = f"CONTEXT: World Cup 2026. Data: {context_data}. Analyze Match #{match_number}: {h_t} vs {a_t}. Notes: {extra_notes}. Answer in Greek."
+                        response = model.generate_content(prompt_content)
                     except Exception as e:
-                        st.error(f"Σφάλμα κατά την παραγωγή περιεχομένου: {e}")
+                        # Αν το Search αποτύχει (π.χ. λόγω περιοχής), κάνουμε απλή κλήση
+                        model = genai.GenerativeModel(model_name=SELECTED_MODEL)
+                        prompt_content = f"CONTEXT: World Cup 2026 Simulation. Previous Results: {context_data}. Upcoming: {h_t} vs {a_t}. Notes: {extra_notes}. Provide score prediction and betting tip in Greek."
+                        response = model.generate_content(prompt_content)
+                    
+                    st.markdown("---")
+                    if response.text:
+                        st.markdown(response.text)
+                    else:
+                        st.error("Δεν βρέθηκε απάντηση.")
                         
         except Exception as e: 
-            st.error(f"Γενικό Σφάλμα: {e}")
+            st.error(f"❌ Σφάλμα Σύνδεσης: {e}. Δοκίμασε να αναβαθμίσεις το google-generativeai στο requirements.txt")
