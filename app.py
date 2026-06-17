@@ -167,7 +167,7 @@ def reset_all_tournament():
     st.rerun()
 
 @st.cache_data(ttl=3600)
-def get_ai_prediction(model_id, prompt):
+def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel(model_id)
     return model.generate_content(prompt).text
@@ -350,7 +350,7 @@ with tabs[6]:
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Analyzing..."):
+                with st.spinner("Αναλύω τα δεδομένα...."):
                     advanced_prompt = f"""
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
@@ -377,7 +377,7 @@ with tabs[6]:
 → Συμπέρανε: πόσες κάρτες αναμένεις, πιθανότητα πέναλτι, επίδραση καιρού στο πρέσινγκ.
  
 ── ΒΗΜΑ 2: ΔΥΝΑΜΙΚΗ ΤΟΥΡΝΟΥΑ (ΠΡΟΤΕΡΑΙΟΤΗΤΑ Νο1) ──────
-• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026, άντλησε:
+• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026 ( web search ), άντλησε:
   - xG & xGOT | Σουτ: Σύνολο/Στόχο/Blocked/Εντός-Εκτός Περιοχής
   - PPDA | Progressive passes | Aerial duels % | Δοκάρια
   - IN-PLAY PROFILE: πώς παίζει όταν προηγείται / υστερεί
@@ -459,12 +459,6 @@ with tabs[6]:
 - ⚠️ Ευάλωτη ζώνη {a_t}: [...]
 - 🎯 Set pieces: [ποια ομάδα πλεονεκτεί]
  
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
-|------------|--------|------|------|--------|---------|
-| 2022 | A vs B | X-X | X | XY/XR | ... |
-| 2018 | C vs D | X-X | X | XY/XR | ... |
-| 2014 | E vs F | X-X | X | XY/XR | ... |
  
 ### 🔮 Quantitative Prediction Model
 | Κατηγορία | Πρόβλεψη | Πιθανότητα | Βάση | Confidence |
@@ -486,6 +480,6 @@ with tabs[6]:
  
 **Συνολικό Confidence Score: X/10**
                     """
-                    ans = get_ai_prediction(working_model, advanced_prompt)
+                    ans = Μετράω_τα_κουκιά(working_model, advanced_prompt)
                     st.markdown("---"); st.markdown(ans)
         except Exception as e: st.error(f"AI Connection Error: {e}")
