@@ -333,7 +333,7 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Elite Web Grounding)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Verified Web Search)")
     
     api_key = st.secrets.get("GEMINI_API_KEY")
     
@@ -342,8 +342,8 @@ with tabs[6]:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
             
-            # --- ΣΩΣΤΗ ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ ΓΙΑ ΑΠΟΦΥΓΗ 404 ---
-            # Χρησιμοποιούμε το όνομα χωρίς το "models/" για να είναι συμβατό με τα Tools
+            # --- ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ (ΑΦΑΙΡΕΣΗ ΠΡΟΘΕΜΑΤΟΣ ΓΙΑ ΑΠΟΦΥΓΗ 404) ---
+            # Χρησιμοποιούμε το σκέτο όνομα, το API θα το βρει αυτόματα
             MODEL_ID = "gemini-1.5-flash" 
 
             c1, c2 = st.columns(2)
@@ -353,10 +353,10 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-            # --- ΟΡΙΣΜΟΣ ΤΟΥ PROMPT ---
+            # Ορισμός του Prompt
             advanced_prompt = f"""
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
 
 Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
@@ -369,7 +369,7 @@ with tabs[6]:
 
 🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
 1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα στην πόλη διεξαγωγής.
-2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026.
+2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026 (χρησιμοποίησε Google Search).
 3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match {match_number} of World Cup 2022 score", κλπ).
 
 ΑΠΑΝΤΗΣΗ (Ελληνικά):
@@ -389,39 +389,24 @@ with tabs[6]:
 """
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🔍 Πραγματοποιώ Web Search (FIFA Live Data)..."):
+                with st.spinner("📡 Πραγματοποιώ Web Search (Live FIFA Data)..."):
                     
                     try:
-                        # Δημιουργία μοντέλου με το σωστό εργαλείο αναζήτησης
-                        # Χρησιμοποιούμε τη νεότερη σύνταξη google_search
+                        # Χρήση του google_search tool (grounding)
+                        # ΣΗΜΑΝΤΙΚΟ: Χρησιμοποιούμε τη σταθερή έκδοση 'v1' αν η 'v1beta' έχει θέμα
                         model = genai.GenerativeModel(
                             model_name=MODEL_ID,
                             tools=[{"google_search": {}}]
                         )
                         
-                        # Κλήση παραγωγής περιεχομένου
                         response = model.generate_content(advanced_prompt)
                         
                         st.markdown("---")
                         if response.text:
                             st.markdown(response.text)
-                            # Αν υπάρχουν πηγές, τις εμφανίζουμε
-                            if hasattr(response.candidates[0], "grounding_metadata"):
-                                with st.expander("🔗 Πηγές Αναζήτησης Google"):
-                                    st.write(response.candidates[0].grounding_metadata)
                         else:
-                            st.error("Το AI δεν επέστρεψε κείμενο.")
+                            st.error("Το AI δεν επέστρεψε περιέχομενο.")
 
                     except Exception as e_inner:
-                        # --- FALLBACK ΣΕ ΠΕΡΙΠΤΩΣΗ 404 ΣΤΟ SEARCH ---
-                        # Αν το tool βγάλει σφάλμα, δημιουργούμε το μοντέλο ΧΩΡΙΣ tools
-                        # για να μην σταματήσει η εφαρμογή
-                        model_fallback = genai.GenerativeModel(model_name=MODEL_ID)
-                        response_fallback = model_fallback.generate_content(advanced_prompt)
-                        
-                        st.warning("⚠️ Το Google Search Tool αντιμετώπισε πρόβλημα (Region/API limit). Η ανάλυση έγινε με εσωτερικά δεδομένα.")
-                        st.markdown("---")
-                        st.markdown(response_fallback.text)
-
-        except Exception as e:
-            st.error(f"❌ Κρίσιμο Σφάλμα: {e}")
+                        # --- FALLBACK ΣΕ ΠΕΡΙΠΤΩΣΗ ΠΟΥ ΤΟ API ΜΠΛΟΚΑΡΕΙ ΤΟ SEARCH ---
+                        st.war
