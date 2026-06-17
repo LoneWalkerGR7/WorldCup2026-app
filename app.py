@@ -333,17 +333,17 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Real Web Intelligence)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Real-Time Web Search)")
+    
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # --- 1. ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
-            # Ανιχνεύουμε ποιο μοντέλο είναι διαθέσιμο (προτεραιότητα στο 1.5 Pro για καλύτερο Search)
-            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            SELECTED_MODEL = 'models/gemini-1.5-pro' if 'models/gemini-1.5-pro' in available_models else 'models/gemini-1.5-flash'
+            # --- ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ ---
+            # Δοκιμάζουμε το όνομα χωρίς το "models/" για να αποφύγουμε το σφάλμα 404
+            MODEL_NAME = "gemini-1.5-flash" 
             
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -353,12 +353,22 @@ with tabs[6]:
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner(f"🌐 Πραγματοποιώ Web Search για τον Αγώνα #{match_number}..."):
+                with st.spinner("🌐 Αναζήτηση στο Internet και ανάλυση δεδομένων..."):
                     
-                    # --- 2. ΤΟ ΔΙΚΟ ΣΟΥ PROMPT (ΕΜΠΛΟΥΤΙΣΜΕΝΟ) ---
+                    # 1. ΟΡΙΣΜΟΣ ΤΟΥ ΕΡΓΑΛΕΙΟΥ SEARCH
+                    # Χρησιμοποιούμε τη σύνταξη που απαιτεί το Gemini για Grounding
+                    tools = [{"google_search_retrieval": {}}]
+                    
+                    # 2. ΔΗΜΙΟΥΡΓΙΑ ΜΟΝΤΕΛΟΥ
+                    model = genai.GenerativeModel(
+                        model_name=MODEL_NAME,
+                        tools=tools
+                    )
+
+                    # 3. ΤΟ ΔΙΚΟ ΣΟΥ PROMPT
                     advanced_prompt = f"""
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
 
 Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
@@ -370,9 +380,9 @@ with tabs[6]:
 - ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
 
 🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Χρησιμοποίησε το Google Search για να βρεις ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει στο γήπεδο διεξαγωγής.
-2. ΦΟΡΜΑ: Αναζήτησε τα xG και τα αποτελέσματα του 1ου αγώνα των {h_t} και {a_t} στο Μουντιάλ 2026 (που έγινε πριν λίγες μέρες).
-3. ΙΣΤΟΡΙΚΟ: Χρησιμοποίησε το Google Search για να βρεις τι έγινε ιστορικά στον αγώνα με το νούμερο #{match_number} (π.χ. "Match 26 of World Cup 2022", "Match 26 of World Cup 2018"). Ανέφερε ομάδες και σκορ.
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει (Web Search: "World Cup 2026 referee assignments June 17", "Weather for match {match_number}").
+2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων (Web Search: "{h_t} {a_t} World Cup 2026 previous match stats xG").
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014 (Web Search: "Match 26 of World Cup 2022 score", "Match 26 of World Cup 2018 score").
 
 ΑΠΑΝΤΗΣΗ (Ελληνικά):
 ## ⚽ {h_t} vs {a_t}
@@ -389,24 +399,22 @@ with tabs[6]:
 | Κόκκινη | Ναι/Όχι | XX% |
 | Ανατροπή | Ναι/Όχι | XX% |
 """
-
-                    # --- 3. ΚΛΗΣΗ ΜΕ GOOGLE SEARCH RETRIEVAL (ΣΩΣΤΗ ΣΥΝΤΑΞΗ) ---
+                    
+                    # ΕΚΤΕΛΕΣΗ ΚΛΗΣΗΣ
                     try:
-                        # Χρησιμοποιούμε τη νέα έκδοση του εργαλείου
-                        model = genai.GenerativeModel(
-                            model_name=SELECTED_MODEL,
-                            tools=[{"google_search_retrieval": {}}]
-                        )
                         response = model.generate_content(advanced_prompt)
                         st.markdown("---")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        # Αν το tool βγάλει 404, κάνουμε fallback χωρίς tools αλλά με το ίδιο prompt
-                        model_simple = genai.GenerativeModel(SELECTED_MODEL)
-                        response = model_simple.generate_content(advanced_prompt)
-                        st.info("💡 Η ανάλυση ολοκληρώθηκε (Safe Mode - Search Limited)")
-                        st.markdown("---")
+                        if response.text:
+                            st.markdown(response.text)
+                        else:
+                            st.error("Το AI δεν επέστρεψε κείμενο.")
+                    except Exception as e_inner:
+                        # Fallback αν το search tool βγάλει σφάλμα
+                        st.warning("⚠️ Πρόβλημα με το Search Tool. Εκτελώ ανάλυση με εσωτερικά δεδομένα...")
+                        simple_model = genai.GenerativeModel(model_name=MODEL_NAME)
+                        response = simple_model.generate_content(advanced_prompt)
                         st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"❌ Connection Error: {e}")
+            st.error(f"❌ Σφάλμα: {e}")
+            st.info("Δοκιμάστε να ελέγξετε αν το GEMINI_API_KEY είναι έγκυρο.")
