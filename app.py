@@ -7,33 +7,30 @@ import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 
-# --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-try:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    supabase: Client = create_client(url, key)
-except Exception as e:
-    st.error("🚨 Λείπουν τα SUPABASE_URL / SUPABASE_KEY από τα Secrets!")
+# --- ΣΥΝΔΕΣΗ ΜΕ ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ (SUPABASE) ---
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
-# --- ΣΥΝΑΡΤΗΣΕΙΣ ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ ---
 def load_from_db():
     try:
         response = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        if response.data and len(res.data) > 0:
-            data = response.data[0]['data']
-            if isinstance(data, str): return json.loads(data)
-            return data
+        if response.data and len(response.data) > 0:
+            raw_data = response.data[0]['data']
+            if isinstance(raw_data, str):
+                return json.loads(raw_data)
+            return raw_data
     except:
-        return None
+        pass
+    return None
 
 def save_to_db(data):
     try:
-        # Μετατροπή σε JSON string για σιγουριά
         supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
-        st.error(f"❌ Αποτυχία αποθήκευσης στη βάση: {e}")
+        st.error(f"Σφάλμα αποθήκευσης: {e}")
 
-# --- 1. CONFIG & CSS ---
+# --- 1. CONFIG & CSS (COSMIC THEME) ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -43,7 +40,9 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
     .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    .stat-label { font-size: 9px; color: #94a3b8 !important; text-transform: uppercase; }
     div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
+    div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
@@ -51,6 +50,7 @@ st.markdown("""
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
+    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -122,10 +122,10 @@ RAW_MATCHES = [
 ]
 
 # --- 4. SESSION STATE ---
-def init_session():
-    data = load_from_db()
-    if data:
-        st.session_state.wc_matches = data
+if 'wc_matches' not in st.session_state:
+    db_data = load_from_db()
+    if db_data:
+        st.session_state.wc_matches = db_data
     else:
         matches = []
         for i, m_data in enumerate(RAW_MATCHES):
@@ -136,9 +136,6 @@ def init_session():
                 "ref": "TBD", "turn": "Καμία", "htft": "TBD"
             })
         st.session_state.wc_matches = matches
-
-if 'wc_matches' not in st.session_state:
-    init_session()
 
 # --- 5. FUNCTIONS ---
 def auto_play():
@@ -158,7 +155,7 @@ def auto_play():
     save_to_db(st.session_state.wc_matches)
     st.rerun()
 
-def reset():
+def reset_all_tournament():
     save_to_db([])
     st.session_state.clear()
     st.cache_data.clear()
@@ -189,7 +186,7 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
-with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
+with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset_all_tournament, type="secondary")
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
@@ -360,122 +357,27 @@ with tabs[6]:
 - Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
 - ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
 
-════════════════════════════════════════
-📋 ΟΔΗΓΙΕΣ ΠΡΟΗΓΜΕΝΗΣ ΑΝΑΛΥΣΗΣ
-════════════════════════════════════════
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει.
+2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
 
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ (Chain-of-Thought — εκτέλεσε ΟΛΑ)
-════════════════════════════════════════════════════════
- 
-── ΒΗΜΑ 1: ΠΕΡΙΒΑΛΛΟΝ & ΔΙΑΙΤΗΣΙΑ ──────────────────────
-• Εντόπισε τον ορισθέντα διαιτητή του αγώνα (web search αν χρειάζεται).
-• Στατιστικά διαιτητή: κάρτες/90', πέναλτι/αγώνα, red cards/αγώνα, στυλ.
-• Καιρός: θερμοκρασία (°C), υγρασία (%), άνεμος, βροχή.
-→ Συμπέρανε: πόσες κάρτες αναμένεις, πιθανότητα πέναλτι, επίδραση καιρού στο πρέσινγκ.
- 
-── ΒΗΜΑ 2: ΔΥΝΑΜΙΚΗ ΤΟΥΡΝΟΥΑ (ΠΡΟΤΕΡΑΙΟΤΗΤΑ Νο1) ──────
-• Αν οι ομάδες έχουν ήδη παίξει στο Μουντιάλ 2026, άντλησε:
-  - xG & xGOT | Σουτ: Σύνολο/Στόχο/Blocked/Εντός-Εκτός Περιοχής
-  - PPDA | Progressive passes | Aerial duels % | Δοκάρια
-  - IN-PLAY PROFILE: πώς παίζει όταν προηγείται / υστερεί
-  - Γκολ ανά ημίχρονο (1ο vs 2ο τάση)
-• Αν είναι 1ος αγώνας: τελευταίοι 10 επίσημοι + προκριματικά.
-
-2. ΔΥΝΑΜΙΚΗ ΦΟΡΜΑ ΤΟΥΡΝΟΥΑ (Από τη 2η Αγωνιστική & μετά - ΚΡΙΣΙΜΟ):
-   - Αν οι ομάδες έχουν ήδη παίξει παιχνίδι/α στο Μουντιάλ 2026, η ανάλυση πρέπει να δώσει προτεραιότητα σε αυτά τα data έναντι των προκριματικών.
-   - Ενσωμάτωσε υποχρεωτικά τις εξής advanced μετρικές από τα τρέχοντα παιχνίδια τους στη διοργάνωση:
-     * Αναμενόμενα γκολ (xG) & xG στο στόχο (xGOT) για την ποιότητα των τελειωμάτων.
-     * Συνολικά Σουτ, Σουτ στο στόχο, Άστοχα και Κομμένα (Blocked) σουτ.
-     * Κατανομή: Σουτ εντός περιοχής vs Σουτ εκτός περιοχής.
-     * Αποτελεσματικότητα στον αέρα (Γκολ με κεφαλιά) και ατυχία (Δοκάρια).
-
-3. ΔΙΑΘΕΣΙΜΟΤΗΤΑ ΠΑΙΚΤΩΝ: Τραυματισμοί, τιμωρίες, επιστροφές της τελευταίας στιγμής (λαμβάνοντας υπόψη τις σημειώσεις του χρήστη).
-
-4. HEAD-TO-HEAD & ΙΣΤΟΡΙΚΟ ΜΟΤΙΒΟ ΑΓΩΝΑ #{match_number}: 
-   - Προηγούμενες αναμετρήσεις των δύο ομάδων.
-   - Τι συνέβη ιστορικά στον συγκεκριμένο αριθμό αγώνα (#{match_number}) στα Μουντιάλ 2022, 2018 και 2014 (π.χ. αν παραδοσιακά ο αγώνας αυτός βγάζει πολλά γκολ, εκπλήξεις ή κόκκινες).
-
-5. ΤΑΚΤΙΚΗ ΑΝΑΛΥΣΗ: Συστήματα (π.χ. 4-3-3, 3-5-2), transition, build-up, ευάλωτες ζώνες στην άμυνα και tactical matchup των key-players.
-
-════════════════════════════════════════
-📤 ΜΟΡΦΗ ΑΠΑΝΤΗΣΗΣ (αποκλειστικά Ελληνικά, Markdown)
-════════════════════════════════════════
-
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-
----
-
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Κλιματικές Συνθήκες
-(Ανάλυση διαιτητή, καρτών, θερμοκρασίας/υγρασίας και η επίδρασή τους στο ρυθμό)
-
-### 🏥 Διαθεσιμότητα, Ρόστερ & Last-Minute Updates
-(Ενσωμάτωση σημειώσεων χρήστη και απουσιών/επιστροφών)
-
-### 📊 Προηγμένη Ανάλυση Data & xG (Τρέχουσα Εικόνα)
-(Εδώ ανάλυσε τη φόρμα. Αν είναι το 2ο+ παιχνίδι, κάνε ενδελεχή χρήση των xG, xGOT, κατανομής σουτ εντός/εκτός περιοχής, blocked shots, δοκαριών και κεφαλιών από τα ματς του Μουντιάλ. Αν είναι το 1ο ματς, βασίσου στα τελευταία 10 επίσημα)
-
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
 ### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-(Η ιστορική αναδρομή του συγκεκριμένου slot αγώνα στις προηγούμενες διοργανώσεις)
-
-### 🔮 Προηγμένο Μοντέλο Πρόβλεψης & Πιθανότητες
-(Υπολόγισε τις πιθανότητες με βάση τα advanced metrics που ανέλυσες παραπάνω)
-
-### 📋 Περιβάλλον Αγώνα
-| Παράμετρος | Τιμή | Επίδραση |
-|------------|------|----------|
-| Διαιτητής | Όνομα (χώρα) | Αυστηρός/Επιεικής |
-| Κάρτες/αγώνα | X.X 🟨 / X.X 🟥 | ... |
-| Πέναλτι/αγώνα | X.XX | ... |
-| Θερμοκρασία | X°C | ... |
-| Υγρασία | X% | ... |
-| Υψόμετρο | Xm | ... |
- 
-### 🏥 Ρόστερ & Διαθεσιμότητα
-**{h_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-**{a_t}:** [Τραυματίες ✗] [Αμφίβολοι ⚠️] [Επιστροφές ✓]
-> 🔄 Σενάριο απουσίας: Αν λείπει ο [X], η πιθανότητα [Y] αλλάζει κατά ~X%
- 
-### 📊 Advanced Data & xG Dashboard
-| Μετρική | {h_t} | {a_t} | Πλεονέκτημα |
-|---------|--------|--------|-------------|
-| xG | X.XX | X.XX | → |
-| xGOT | X.XX | X.XX | → |
-| Σουτ σύνολο | XX | XX | → |
-| Σουτ στόχο | XX | XX | → |
-| Εντός περιοχής | XX% | XX% | → |
-| PPDA | X.X | X.X | → |
-| Δοκάρια | X | X | → |
-| Γκολ 1ο ημίχρονο | X | X | → |
-| Γκολ 2ο ημίχρονο | X | X | → |
- 
-### ⚔️ Τακτική & Key Matchups
-**Σχηματισμοί:** {h_t} [X-X-X] vs {a_t} [X-X-X]
-- 🔑 Matchup #1: [A] vs [B] → [νικητής + λόγος]
-- 🔑 Matchup #2: [C] vs [D] → [νικητής + λόγος]
-- ⚠️ Ευάλωτη ζώνη {h_t}: [...]
-- ⚠️ Ευάλωτη ζώνη {a_t}: [...]
-- 🎯 Set pieces: [ποια ομάδα πλεονεκτεί]
- 
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
-|------------|--------|------|------|--------|---------|
-| 2022 | A vs B | X-X | X | XY/XR | ... |
-| 2018 | C vs D | X-X | X | XY/XR | ... |
-| 2014 | E vs F | X-X | X | XY/XR | ... |
- 
 ### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα | Βάση | Confidence |
-|-----------|----------|------------|------|------------|
-| Αποτέλεσμα (1-X-2) | {h_t}/Ισοπαλία/{a_t} | XX%/XX%/XX% | Bayesian xG | X/10 |
-| Πιο πιθανό σκορ | X-X | XX% | Poisson | X/10 |
-| Over 2.5 Goals | Ναι/Όχι | XX% | Συνολικό xG | X/10 |
-| BTTS | Ναι/Όχι | XX% | Επιθ/Αμυν profile | X/10 |
-| Over 9.5 Κάρτες | Ναι/Όχι | XX% | Referee + Ένταση | X/10 |
-| Πέναλτι | Ναι/Όχι | XX% | Ref + Box attacks | X/10 |
-| Κόκκινη Κάρτα | Ναι/Όχι | XX% | Ref + H2H | X/10 |
-| Ανατροπή (In-play) | Ναι/Όχι | XX% | In-play profile | X/10 |
-| Γκολ 1ου ημιχρόνου | Ναι/Όχι | XX% | 1ο ημίχρονο τάση | X/10 |
- 
-> 💡 **Value Bets:** [ποια πρόβλεψη έχει probability > implied probability αγοράς]
- 
-### 🎯 Στρατηγικό Συμπέρασμα
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
+                    ans = get_ai_prediction(working_model, advanced_prompt)
+                    st.markdown("---")
+                    st.markdown(ans)
+        except Exception as e: st.error(f"AI Connection Error: {e}")
