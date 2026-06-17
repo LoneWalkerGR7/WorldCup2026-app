@@ -333,18 +333,19 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Real-Time Web Search)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Elite Web Grounding)")
     
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
+            import google.generativeai as genai
             genai.configure(api_key=api_key)
             
-            # --- ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ ---
-            # Δοκιμάζουμε το όνομα χωρίς το "models/" για να αποφύγουμε το σφάλμα 404
-            MODEL_NAME = "gemini-1.5-flash" 
-            
+            # --- Δυναμική επιλογή σωστού μοντέλου για αποφυγή 404 ---
+            # Το εργαλείο αναζήτησης απαιτεί συγκεκριμένα μοντέλα στην έκδοση v1beta
+            SELECTED_MODEL = "gemini-1.5-flash" # Δοκιμάζουμε το πιο σταθερό
+
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
@@ -353,22 +354,23 @@ with tabs[6]:
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🌐 Αναζήτηση στο Internet και ανάλυση δεδομένων..."):
+                with st.spinner("🌐 Σύνδεση με FIFA Data & Web Search..."):
                     
-                    # 1. ΟΡΙΣΜΟΣ ΤΟΥ ΕΡΓΑΛΕΙΟΥ SEARCH
-                    # Χρησιμοποιούμε τη σύνταξη που απαιτεί το Gemini για Grounding
-                    tools = [{"google_search_retrieval": {}}]
+                    # --- ΟΡΙΣΜΟΣ ΤΟΥ SEARCH TOOL (GROUNDING) ---
+                    # Αυτή είναι η σωστή σύνταξη για να κάνει ΠΡΑΓΜΑΤΙΚΟ Google Search
+                    tools = [{"google_search": {}}]
                     
-                    # 2. ΔΗΜΙΟΥΡΓΙΑ ΜΟΝΤΕΛΟΥ
-                    model = genai.GenerativeModel(
-                        model_name=MODEL_NAME,
-                        tools=tools
-                    )
+                    try:
+                        # Δημιουργία μοντέλου με το εργαλείο αναζήτησης
+                        model = genai.GenerativeModel(
+                            model_name=SELECTED_MODEL,
+                            tools=tools
+                        )
 
-                    # 3. ΤΟ ΔΙΚΟ ΣΟΥ PROMPT
-                    advanced_prompt = f"""
+                        # --- ΤΟ ΔΙΚΟ ΣΟΥ ADVANCED PROMPT ---
+                        advanced_prompt = f"""
+ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
 
 Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
@@ -380,9 +382,9 @@ with tabs[6]:
 - ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
 
 🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει (Web Search: "World Cup 2026 referee assignments June 17", "Weather for match {match_number}").
-2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων (Web Search: "{h_t} {a_t} World Cup 2026 previous match stats xG").
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014 (Web Search: "Match 26 of World Cup 2022 score", "Match 26 of World Cup 2018 score").
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα.
+2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match 26 of World Cup 2022 score", κλπ).
 
 ΑΠΑΝΤΗΣΗ (Ελληνικά):
 ## ⚽ {h_t} vs {a_t}
@@ -399,22 +401,25 @@ with tabs[6]:
 | Κόκκινη | Ναι/Όχι | XX% |
 | Ανατροπή | Ναι/Όχι | XX% |
 """
-                    
-                    # ΕΚΤΕΛΕΣΗ ΚΛΗΣΗΣ
-                    try:
+                        
+                        # Κλήση με το prompt
                         response = model.generate_content(advanced_prompt)
+                        
                         st.markdown("---")
                         if response.text:
                             st.markdown(response.text)
+                            # Εμφάνιση πηγών αν υπάρχουν (Grounding Metadata)
+                            if response.candidates[0].grounding_metadata.search_entry_point:
+                                st.caption("🔍 Πηγές: Δεδομένα από Google Search")
                         else:
                             st.error("Το AI δεν επέστρεψε κείμενο.")
+                            
                     except Exception as e_inner:
-                        # Fallback αν το search tool βγάλει σφάλμα
-                        st.warning("⚠️ Πρόβλημα με το Search Tool. Εκτελώ ανάλυση με εσωτερικά δεδομένα...")
-                        simple_model = genai.GenerativeModel(model_name=MODEL_NAME)
-                        response = simple_model.generate_content(advanced_prompt)
+                        # Αν το tool προκαλέσει σφάλμα (π.χ. region restriction), κάνουμε αυτόματη υποχώρηση
+                        st.warning("⚠️ Το Search Tool δεν είναι διαθέσιμο αυτή τη στιγμή. Εκτελώ ανάλυση βάσει εκπαιδευμένων δεδομένων...")
+                        model_simple = genai.GenerativeModel(model_name=SELECTED_MODEL)
+                        response = model_simple.generate_content(advanced_prompt)
                         st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"❌ Σφάλμα: {e}")
-            st.info("Δοκιμάστε να ελέγξετε αν το GEMINI_API_KEY είναι έγκυρο.")
+            st.error(f"❌ Κρίσιμο Σφάλμα: {e}")
