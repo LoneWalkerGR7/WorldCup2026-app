@@ -170,10 +170,15 @@ def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     model = genai.GenerativeModel("gemini-2.0-flash")
     
-    # Google Search grounding tool
-    google_search_tool = genai.protos.Tool(
-        google_search=genai.protos.GoogleSearch()
-    )
+    # Google Search grounding - παλιό syntax
+    google_search_tool = {
+        "google_search_retrieval": {
+            "dynamic_retrieval_config": {
+                "mode": "MODE_DYNAMIC",
+                "dynamic_threshold": 0.3
+            }
+        }
+    }
     
     response = model.generate_content(
         prompt,
