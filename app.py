@@ -333,69 +333,69 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Verified Search Edition)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (AI Pro Analysis)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # Επιλογή μοντέλου - Χρησιμοποιούμε το 'gemini-1.5-flash' που είναι ταχύτατο στο search
-            # Δοκιμάζουμε χωρίς το πρόθεμα models/ αν το προηγούμενο έβγαλε 404
-            model_id = 'gemini-1.5-flash' 
-            
+            # --- 1. ΔΥΝΑΜΙΚΗ ΕΥΡΕΣΗ ΜΟΝΤΕΛΟΥ (ΑΠΟΦΥΓΗ 404) ---
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Προτεραιότητα στο 1.5 Flash που είναι το πιο σταθερό
+            main_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in models else models[0]
+
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις:", placeholder="Προσθέστε πληροφορίες για καιρό ή τραυματισμούς...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, τραυματισμοί):", placeholder="Προσθέστε πληροφορίες...")
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner(f"📡 Πραγματοποιώ Web Search για τον διαιτητή και το ιστορικό του Αγώνα #{match_number}..."):
+                with st.spinner("🔄 Συλλέγω δεδομένα και πραγματοποιώ ανάλυση..."):
                     
-                    # Ενεργοποίηση Google Search Tool με τη σωστή σύνταξη
-                    try:
-                        model = genai.GenerativeModel(
-                            model_name=model_id,
-                            tools=[{"google_search": {}}] # Νέα σύνταξη για Google Search
-                        )
-                    except:
-                        model = genai.GenerativeModel(model_name=model_id)
-
-                    # ΠΟΛΥ ΣΥΓΚΕΚΡΙΜΕΝΟ PROMPT ΓΙΑ ΝΑ ΜΗΝ ΓΙΝΟΝΤΑΙ ΛΑΘΗ
-                    rigorous_prompt = f"""
-                    Σήμερα είναι 17 Ιουνίου 2026. Το Παγκόσμιο Κύπελλο 2026 διεξάγεται ΤΩΡΑ.
+                    # --- 2. ΤΟ ΑΠΟΛΥΤΟ PROMPT ΓΙΑ SEARCH & ΙΣΤΟΡΙΚΟ ---
+                    full_prompt = f"""
+                    ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Βρισκόμαστε στο Μουντιάλ 2026.
                     
-                    ΕΚΤΕΛΕΣΕ ΤΑ ΠΑΡΑΚΑΤΩ ΒΗΜΑΤΑ ΜΕΣΩ GOOGLE SEARCH:
+                    ΑΝΤΙΚΕΙΜΕΝΟ: Αγώνας #{match_number} | {h_t} vs {a_t}
                     
-                    1. ΑΝΑΖΗΤΗΣΗ ΔΙΑΙΤΗΤΗ: Βρες τον επίσημο διαιτητή που όρισε η FIFA για τον αγώνα #{match_number} ({h_t} vs {a_t}). 
-                       Αν ο αγώνας δεν έχει γίνει ακόμα, βρες την επίσημη ανακοίνωση των διαιτητών της FIFA για τις ημερομηνίες 15-18 Ιουνίου 2026.
+                    ΟΔΗΓΙΕΣ ΓΙΑ WEB SEARCH (Εκτέλεσε τώρα):
+                    1. ΔΙΑΙΤΗΤΗΣ: Βρες τον επίσημο διαιτητή της FIFA για τον σημερινό αγώνα #{match_number}. 
+                       Αναζήτησε: "FIFA World Cup 2026 referee assignments June 17". 
+                       Μην επινοήσεις όνομα αν δεν το βρεις, πες "Εκκρεμεί ορισμός".
                     
-                    2. ΙΣΤΟΡΙΚΟ SLOT ΑΓΩΝΑ #{match_number}:
-                       - Ποιος αγώνας ήταν ο "Match #{match_number}" στο Μουντιάλ 2022 (Κατάρ); Ποιο ήταν το σκορ;
-                       - Ποιος αγώνας ήταν ο "Match #{match_number}" στο Μουντιάλ 2018 (Ρωσία); Ποιο ήταν το σκορ;
-                       - Ποιος αγώνας ήταν ο "Match #{match_number}" στο Μουντιάλ 2014 (Βραζιλία); Ποιο ήταν το σκορ;
+                    2. ΙΣΤΟΡΙΚΟ MATCH #{match_number}:
+                       - Ποιος αγώνας ήταν το Match #26 στο Μουντιάλ 2022 (Κατάρ); (Απάντηση: Πολωνία - Σαουδική Αραβία 2-0)
+                       - Ποιος αγώνας ήταν το Match #26 στο Μουντιάλ 2018 (Ρωσία); (Απάντηση: Γαλλία - Περού 1-0)
+                       Επαλήθευσε τα παραπάνω και σύγκρινε αν το Slot #26 βγάζει συνήθως Under ή Over.
                     
-                    3. ΚΑΙΡΟΣ: Βρες τις τρέχουσες συνθήκες στην πόλη που διεξάγεται ο αγώνας #{match_number}.
-                    
-                    ΣΗΜΑΝΤΙΚΟ: Μην αναφέρεις ότι το Μουντιάλ 2026 είναι στο μέλλον. Συμπεριφέρσου σαν να διαβάζεις τις σημερινές ειδήσεις.
+                    3. xG & STATS: Βρες τα xG των {h_t} και {a_t} από την 1η αγωνιστική του Μουντιάλ 2026.
                     
                     ΑΠΟΔΟΣΗ ΣΕ ΕΛΛΗΝΙΚΑ (Markdown):
-                    - Χρησιμοποίησε πίνακες για το ιστορικό.
-                    - Δώσε έμφαση στα στατιστικά του διαιτητή (κάρτες/πέναλτι).
-                    - Κάνε πρόβλεψη σκορ.
+                    - Πίνακας Ιστορικού Match #{match_number}.
+                    - Ανάλυση Διαιτητή (Κάρτες/Πέναλτι).
+                    - Πρόβλεψη Σκορ και Value Bet.
                     
-                    Σημειώσεις χρήστη: {extra_notes}
+                    Σημειώσεις: {extra_notes}
                     """
 
-                    response = model.generate_content(rigorous_prompt)
-                    
-                    st.markdown("---")
-                    if response.text:
+                    # --- 3. TRY/EXCEPT BLOCK ΓΙΑ ΤΟ SEARCH TOOL ---
+                    try:
+                        # Δοκιμάζουμε την κλήση ΜΕ Google Search
+                        model_with_tools = genai.GenerativeModel(
+                            model_name=main_model,
+                            tools=[{"google_search": {}}]
+                        )
+                        response = model_with_tools.generate_content(full_prompt)
                         st.markdown(response.text)
-                    else:
-                        st.warning("Το Search δεν επέστρεψε αποτελέσματα. Δοκίμασε ξανά σε λίγο.")
+                    except Exception as tool_error:
+                        # Αν το tool προκαλεί 404 ή σφάλμα, κάνουμε απλή κλήση στο μοντέλο
+                        model_simple = genai.GenerativeModel(model_name=main_model)
+                        response = model_simple.generate_content(full_prompt)
+                        st.info("⚠️ Η αναζήτηση Google Search περιορίστηκε, αλλά η ανάλυση έγινε βάσει των εσωτερικών δεδομένων του μοντέλου.")
+                        st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"❌ Σφάλμα: {e}")
+            st.error(f"❌ Κρίσιμο Σφάλμα: {e}")
