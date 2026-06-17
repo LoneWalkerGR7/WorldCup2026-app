@@ -349,7 +349,7 @@ with tabs[6]:
             genai.configure(api_key=api_key)
             # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
+            working_model = "gemini-2.0-flash" if 'models/gemini-1.5-flash' in available_models else available_models[0]
             
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
