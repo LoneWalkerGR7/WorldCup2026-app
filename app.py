@@ -7,47 +7,42 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 
 # --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-# Βεβαιώσου ότι έχεις SUPABASE_URL και SUPABASE_KEY στα Secrets
+# Βεβαιώσου ότι έχεις SUPABASE_URL και SUPABASE_KEY στα Secrets του Streamlit
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
 def load_data():
     try:
-        response = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        # Διόρθωση του σφάλματος 'str' object
-        if response.data and len(response.data) > 0:
-            return response.data[0]['data']
+        # Τραβάμε τα δεδομένα από τη γραμμή με id=1
+        res = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]['data']
     except Exception as e:
-        st.error(f"Σφάλμα βάσης: {e}")
+        st.error(f"Σφάλμα κατά τη φόρτωση: {e}")
     return None
 
 def save_data(data):
     try:
-        supabase.table("tournament_persistence").update({"data": data}).eq("id", 1).execute()
+        # Χρήση UPSERT: Αν υπάρχει το id:1 το αλλάζει, αν δεν υπάρχει το φτιάχνει
+        supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
-        st.error(f"Σφάλμα αποθήκευσης: {e}")
+        st.error(f"Σφάλμα κατά την αποθήκευση: {e}")
 
-# --- 1. CONFIG & CSS (COSMIC THEME) ---
-st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
-
-st.markdown("""
-    <style>
+# --- 1. CONFIG & CSS ---
+st.set_page_config(page_title="World Cup 2026 Ultimate", layout="wide", page_icon="🏆")
+st.markdown("""<style>
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
-    [data-testid="stHeader"] { background: rgba(0,0,0,0); }
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
-    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
-    div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     button[data-testid="stBaseButton-primary"] { background-color: #ef4444 !important; color: white !important; border: none !important; font-weight: 800 !important; }
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
-    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
-    </style>
-    """, unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
 TEAMS_MAP = {
@@ -116,13 +111,12 @@ RAW_MATCHES = [
     ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"]
 ]
 
-# --- 4. SESSION STATE ---
+# --- 4. SESSION STATE LOGIC ---
 if 'wc_matches' not in st.session_state:
     db_data = load_data()
-    if db_data:
+    if db_data and len(db_data) > 0:
         st.session_state.wc_matches = db_data
     else:
-        # First Time Initialization
         matches = []
         for i, m_data in enumerate(RAW_MATCHES):
             matches.append({
@@ -132,7 +126,6 @@ if 'wc_matches' not in st.session_state:
                 "ref": "TBD", "turn": "Καμία", "htft": "TBD"
             })
         st.session_state.wc_matches = matches
-        save_data(matches)
 
 # --- 5. FUNCTIONS ---
 def auto_play():
@@ -144,7 +137,7 @@ def auto_play():
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
-            res = "X"
+            res = "X"; 
             if m['sh'] > m['sa']: res = "1"
             elif m['sa'] > m['sh']: res = "2"
             m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
@@ -152,7 +145,7 @@ def auto_play():
     save_data(st.session_state.wc_matches)
     st.rerun()
 
-def reset():
+def reset_tourney():
     st.session_state.wc_matches = []
     del st.session_state['wc_matches']
     save_data([])
@@ -184,11 +177,10 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
-with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
+with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset_tourney, type="secondary")
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
-# ΗΜΕΡΟΛΟΓΙΟ
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -232,7 +224,6 @@ with tabs[0]:
                     save_data(st.session_state.wc_matches)
                     st.rerun()
 
-# ΒΑΘΜΟΛΟΓΙΕΣ
 with tabs[1]:
     cols_s = st.columns(3)
     GROUPS_L = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
@@ -257,7 +248,6 @@ with tabs[1]:
             df = pd.DataFrame(res).sort_values(by=["Pts", "GD"], ascending=False)
             st.data_editor(df, column_config={"Flag": st.column_config.ImageColumn("🏳️")}, hide_index=True, key=f"table_{gId}")
 
-# ΠΟΡΕΙΑ ΟΜΑΔΩΝ
 with tabs[2]:
     all_names = sorted([d['n'] for d in TEAMS_MAP.values()])
     sel_t = st.selectbox("Επιλέξτε Ομάδα:", all_names)
@@ -283,7 +273,6 @@ with tabs[2]:
             <b>Αγώνας {idx+1}</b><br>{h_n} {m['sh'] if m['sh'] is not None else ''} - {m['sa'] if m['sa'] is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
-# ΑΝΑΛΥΣΗ ΣΚΟΡ
 with tabs[3]:
     st.markdown("### 📊 Πίνακας Πιθανών Σκορ & Συχνότητας")
     actual_scores = [(m['sh'], m['sa']) for m in st.session_state.wc_matches if m['fin']]
@@ -302,7 +291,6 @@ with tabs[3]:
                 st_class = "score-out" if count > 0 else "score-delayed"
                 st.markdown(f"""<div class="score-box {st_class}">{h_label}-{a_label}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
-# ΑΝΑΤΡΟΠΕΣ
 with tabs[4]:
     st.markdown("### 🔄 Ανάλυση Ανατροπών (Turnarounds)")
     t_fin = [m for m in st.session_state.wc_matches if m['fin'] and m.get('turn','Καμία') != "Καμία"]
@@ -318,10 +306,8 @@ with tabs[4]:
             st.markdown(f"""<div class="turnaround-card"><span style="color:#06b6d4; font-size:12px; font-weight:bold;">{m['turn']}</span><br><b>{h_n} {m['sh']} - {m['sa']} {a_n}</b></div>""", unsafe_allow_html=True)
     else: st.info("Δεν έχουν σημειωθεί ανατροπές ακόμα.")
 
-# ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ
 with tabs[5]:
     st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
-    st.write("Εμφάνιση αποτελεσμάτων HT/FT (εξαιρούνται οι πλήρεις ανατροπές 1/2 και 2/1).")
     htft_types = ["1/1", "1/X", "X/1", "X/X", "X/2", "2/X", "2/2"]
     all_htft = [m.get('htft','TBD') for m in st.session_state.wc_matches if m['fin'] and m.get('htft','TBD') in htft_types]
     cols_htft = st.columns(7)
@@ -331,59 +317,26 @@ with tabs[5]:
             st_class = "score-out" if count > 0 else "score-delayed"
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
-# ΠΡΟΒΛΕΨΕΙΣ
 with tabs[6]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
     api_key = st.secrets.get("GEMINI_API_KEY")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ΜΕΣΩ ΑΝΑΖΗΤΗΣΗΣ ΓΙΑ ΑΠΟΦΥΓΗ 404
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
-            
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
-            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("Analyzing..."):
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
-
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημעיωση."}
-
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει.
-2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων.
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
-
-ΑΠΑΝΤΗΣΗ (Ελληνικά):
-## ⚽ {h_t} vs {a_t}
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-### 🏥 Διαθεσιμότητα & Σημειώσεις
-### 📊 Data & xG Analysis
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα |
-|-----------|----------|------------|
-| 1-X-2 | ... | XX% |
-| Σκορ | X-X | — |
-| Πέναλτι | Ναι/Όχι | XX% |
-| Κόκκινη | Ναι/Όχι | XX% |
-| Ανατροπή | Ναι/Όχι | XX% |
-"""
+                    You are a top football analyst. Analyze match #{match_number} | {h_t} vs {a_t}. USER NOTES: {extra_notes}.
+                    Use chain-of-thought analysis and web search for injuries/referee. Return deep prediction in Greek.
+                    """
                     ans = get_ai_prediction(working_model, advanced_prompt)
-                    st.markdown("---")
-                    st.markdown(ans)
+                    st.markdown("---"); st.markdown(ans)
         except Exception as e: st.error(f"Error: {e}")
