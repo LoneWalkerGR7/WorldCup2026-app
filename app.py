@@ -342,9 +342,9 @@ with tabs[6]:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
             
-            # --- 1. ΟΡΙΣΜΟΣ ΜΟΝΤΕΛΟΥ ---
-            # Χρησιμοποιούμε το flash για ταχύτητα στο search
-            SELECTED_MODEL = "gemini-1.5-flash" 
+            # --- ΣΩΣΤΗ ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΟΥ ΓΙΑ ΑΠΟΦΥΓΗ 404 ---
+            # Χρησιμοποιούμε το όνομα χωρίς το "models/" για να είναι συμβατό με τα Tools
+            MODEL_ID = "gemini-1.5-flash" 
 
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -353,7 +353,7 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-            # --- 2. ΟΡΙΣΜΟΣ ΤΟΥ PROMPT (ΕΚΤΟΣ TRY ΓΙΑ ΑΠΟΦΥΓΗ NAMEERROR) ---
+            # --- ΟΡΙΣΜΟΣ ΤΟΥ PROMPT ---
             advanced_prompt = f"""
 ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
@@ -389,31 +389,39 @@ with tabs[6]:
 """
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🌐 Σύνδεση με FIFA Data & Web Search..."):
+                with st.spinner("🔍 Πραγματοποιώ Web Search (FIFA Live Data)..."):
                     
                     try:
-                        # --- 3. ΠΡΟΣΠΑΘΕΙΑ ΜΕ GOOGLE SEARCH ---
-                        # Χρησιμοποιούμε τη νεότερη μέθοδο εργαλείου
+                        # Δημιουργία μοντέλου με το σωστό εργαλείο αναζήτησης
+                        # Χρησιμοποιούμε τη νεότερη σύνταξη google_search
                         model = genai.GenerativeModel(
-                            model_name=SELECTED_MODEL,
+                            model_name=MODEL_ID,
                             tools=[{"google_search": {}}]
                         )
+                        
+                        # Κλήση παραγωγής περιεχομένου
                         response = model.generate_content(advanced_prompt)
                         
                         st.markdown("---")
                         if response.text:
                             st.markdown(response.text)
+                            # Αν υπάρχουν πηγές, τις εμφανίζουμε
+                            if hasattr(response.candidates[0], "grounding_metadata"):
+                                with st.expander("🔗 Πηγές Αναζήτησης Google"):
+                                    st.write(response.candidates[0].grounding_metadata)
                         else:
                             st.error("Το AI δεν επέστρεψε κείμενο.")
-                            
+
                     except Exception as e_inner:
-                        # --- 4. FALLBACK ΑΝ ΤΟ SEARCH ΑΠΟΤΥΧΕΙ ---
-                        st.warning("⚠️ Το Search Tool δεν είναι διαθέσιμο. Εκτελώ ανάλυση βάσει εκπαιδευμένων δεδομένων...")
-                        # Εδώ το advanced_prompt είναι πλέον ορισμένο, οπότε δεν θα βγάλει NameError
-                        model_simple = genai.GenerativeModel(model_name=SELECTED_MODEL)
-                        response = model_simple.generate_content(advanced_prompt)
+                        # --- FALLBACK ΣΕ ΠΕΡΙΠΤΩΣΗ 404 ΣΤΟ SEARCH ---
+                        # Αν το tool βγάλει σφάλμα, δημιουργούμε το μοντέλο ΧΩΡΙΣ tools
+                        # για να μην σταματήσει η εφαρμογή
+                        model_fallback = genai.GenerativeModel(model_name=MODEL_ID)
+                        response_fallback = model_fallback.generate_content(advanced_prompt)
+                        
+                        st.warning("⚠️ Το Google Search Tool αντιμετώπισε πρόβλημα (Region/API limit). Η ανάλυση έγινε με εσωτερικά δεδομένα.")
                         st.markdown("---")
-                        st.markdown(response.text)
+                        st.markdown(response_fallback.text)
 
         except Exception as e:
             st.error(f"❌ Κρίσιμο Σφάλμα: {e}")
