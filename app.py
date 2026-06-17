@@ -486,7 +486,7 @@ with tabs[6]:
  
 **Συνολικό Confidence Score: X/10**
 """
-                    ans = get_ai_prediction(working_model, advanced_prompt)
+                    ans = Μετράω_τα_κουκιά(working_model, advanced_prompt)
                     st.markdown("---")
                     st.markdown(ans)
         except Exception as e: st.error(f"AI Connection Error: {e}")
