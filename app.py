@@ -8,33 +8,32 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 
 # --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-# Πρέπει να έχεις τα SUPABASE_URL και SUPABASE_KEY στα Secrets
 try:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     supabase: Client = create_client(url, key)
-except:
-    st.error("Σφάλμα: Λείπουν τα κλειδιά της βάσης δεδομένων SUPABASE στα Secrets.")
+except Exception as e:
+    st.error("🚨 Λείπουν τα SUPABASE_URL / SUPABASE_KEY από τα Secrets!")
 
+# --- ΣΥΝΑΡΤΗΣΕΙΣ ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ ---
 def load_from_db():
     try:
         response = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
-        if response.data and response.data[0]['data']:
-            raw_data = response.data[0]['data']
-            if isinstance(raw_data, str):
-                return json.loads(raw_data)
-            return raw_data
+        if response.data and len(res.data) > 0:
+            data = response.data[0]['data']
+            if isinstance(data, str): return json.loads(data)
+            return data
     except:
-        pass
-    return None
+        return None
 
 def save_to_db(data):
     try:
+        # Μετατροπή σε JSON string για σιγουριά
         supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
-        st.error(f"Σφάλμα αποθήκευσης: {e}")
+        st.error(f"❌ Αποτυχία αποθήκευσης στη βάση: {e}")
 
-# --- 1. CONFIG & CSS (COSMIC THEME) ---
+# --- 1. CONFIG & CSS ---
 st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
 
 st.markdown("""
@@ -45,7 +44,6 @@ st.markdown("""
     .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
     div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
-    div[data-testid="stTable"] table { color: white !important; width: 100% !important; font-size: 12px !important; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
     .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
@@ -53,7 +51,6 @@ st.markdown("""
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
-    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -124,11 +121,11 @@ RAW_MATCHES = [
     ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"]
 ]
 
-# --- 4. SESSION STATE & DB ---
+# --- 4. SESSION STATE ---
 def init_session():
-    db_data = load_from_db()
-    if db_data:
-        st.session_state.wc_matches = db_data
+    data = load_from_db()
+    if data:
+        st.session_state.wc_matches = data
     else:
         matches = []
         for i, m_data in enumerate(RAW_MATCHES):
@@ -153,7 +150,6 @@ def auto_play():
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
-            # HT/FT Simulation
             res = "X"
             if m['sh'] > m['sa']: res = "1"
             elif m['sa'] > m['sh']: res = "2"
@@ -162,7 +158,7 @@ def auto_play():
     save_to_db(st.session_state.wc_matches)
     st.rerun()
 
-def reset_all_tournament():
+def reset():
     save_to_db([])
     st.session_state.clear()
     st.cache_data.clear()
@@ -193,11 +189,10 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
-with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset_all_tournament, type="secondary")
+with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset, type="secondary")
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
-# --- TABS LOGIC ---
 with tabs[0]:
     cols = st.columns(3)
     for idx, m in enumerate(st.session_state.wc_matches):
@@ -484,11 +479,3 @@ with tabs[6]:
 > 💡 **Value Bets:** [ποια πρόβλεψη έχει probability > implied probability αγοράς]
  
 ### 🎯 Στρατηγικό Συμπέρασμα
-[3-4 προτάσεις: πού κρίνεται ο αγώνας, ποιο matchup καθορίζει, ποιος παράγοντας έχει τη μεγαλύτερη επίδραση]
- 
-**Συνολικό Confidence Score: X/10**
-"""
-                    ans = get_ai_prediction(working_model, advanced_prompt)
-                    st.markdown("---")
-                    st.markdown(ans)
-        except Exception as e: st.error(f"AI Connection Error: {e}")
