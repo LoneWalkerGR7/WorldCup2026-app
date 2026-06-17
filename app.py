@@ -333,151 +333,62 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Live Web Data Edition)")
     api_key = st.secrets.get("GEMINI_API_KEY")
+    
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ
-            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            working_model = "gemini-2.0-flash" if 'models/gemini-1.5-flash' in available_models else available_models[0]
+            
+            # ΕΝΕΡΓΟΠΟΙΗΣΗ GOOGLE SEARCH TOOL
+            tools = [{"google_search": {}}] 
+            # Χρήση μοντέλου που υποστηρίζει σίγουρα tools (π.χ. 1.5 Flash ή Pro)
+            model = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                tools=tools
+            )
             
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Καιρός, απουσίες...")
             
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Αναλύω τα δεδομένα...."):
-                    advanced_prompt = f"""
-Είσαι elite football analyst με απόλυτη εξειδίκευση στο Μουντιάλ 2026.
-Αγώνας #{match_number} | {h_t} vs {a_t}
-ΣΗΜΕΙΩΣΕΙΣ: {extra_notes if extra_notes else "Καμία."}
-
-════════════════════════════════════════
-🚫 ΒΗΜΑ 0 — HARD GATE (ΠΡΙΝ ΑΠΟ ΟΤΙΔΗΠΟΤΕ ΑΛΛΟ)
-════════════════════════════════════════
-Εκτέλεσε ΥΠΟΧΡΕΩΤΙΚΑ τα παρακάτω web searches:
-
-0A. web_search("{h_t} vs {a_t} World Cup 2026 group stage")
-0B. web_search("{h_t} World Cup 2026 stats xG shots")
-0C. web_search("{a_t} World Cup 2026 stats xG shots")
-0D. web_search("match {match_number} World Cup 2026 referee")
-0E. web_search("{h_t} {a_t} injuries suspensions World Cup 2026")
-
-❌ ΚΑΝΟΝΑΣ: Αν δεν βρεις πραγματικά δεδομένα για κάποια μετρική,
-γράψε "N/A [NOT FOUND]" — ΑΠΑΓΟΡΕΥΕΤΑΙ να εφεύρεις αριθμούς.
-
-════════════════════════════════════════
-📊 ΙΕΡΑΡΧΙΑ ΔΕΔΟΜΕΝΩΝ (αυστηρή σειρά)
-════════════════════════════════════════
-1️⃣ Αγώνες Μουντιάλ 2026 ← ΠΑΝΤΑ ΠΡΩΤΑ αν υπάρχουν
-2️⃣ Τελευταίοι 5 επίσημοι αγώνες ← αν δεν υπάρχουν WC26 data
-3️⃣ H2H ιστορικό ← μόνο συμπληρωματικά
-
-Σε ΚΑΘΕ αριθμό που γράφεις, βάλε source tag:
-[WC26] = από Μουντιάλ 2026 | [L5] = τελευταίοι 5 | [EST] = εκτίμηση
-
-════════════════════════════════════════
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-════════════════════════════════════════
-
-── ΒΗΜΑ 1: REFEREE & CONDITIONS ──
-Από το search 0D: ποιος είναι ο διαιτητής;
-Στατιστικά: κάρτες/90', πέναλτι/αγώνα, red cards, στυλ.
-Καιρός (πόλη αγώνα): °C, υγρασία %, άνεμος.
-→ Συμπέρανε: αναμενόμενες κάρτες, πιθανότητα πέναλτι.
-
-── ΒΗΜΑ 2: TOURNAMENT DATA (ΚΡΙΣΙΜΟ) ──
-Από τα searches 0B & 0C:
-- xG [WC26], xGOT [WC26], Σουτ εντός/εκτός περιοχής [WC26]
-- PPDA [WC26], δοκάρια [WC26], γκολ ανά ημίχρονο [WC26]
-- In-play profile: πώς αντιδρά η ομάδα όταν προηγείται / υστερεί
-
-Αν {match_number} είναι πρώτος αγώνας κάποιας ομάδας:
-→ χρησιμοποίησε τελευταίους 5 επίσημους [L5] με ρητή σημείωση.
-
-── ΒΗΜΑ 3: SQUAD AVAILABILITY ──
-Από το search 0E + {extra_notes}:
-Τραυματίες ✗ | Αμφίβολοι ⚠️ | Επιστροφές ✓
-→ Σενάριο απουσίας: αν λείπει [X], η πιθανότητα [Y] αλλάζει κατά ~Z%
-
-── ΒΗΜΑ 4: H2H + HISTORICAL PATTERN ──
-Προηγούμενες αναμετρήσεις H2H.
-Τι έγινε στον αγώνα #{match_number} στα WC 2022, 2018, 2014
-(γκολ, κάρτες, pattern, εκπλήξεις).
-
-── ΒΗΜΑ 5: TACTICAL ANALYSIS ──
-Σχηματισμοί, transitions, build-up, ευάλωτες ζώνες.
-Key matchups παικτών. Set pieces advantage.
-ΒΑΣΙΣΟΥ στα WC2026 data — όχι γενικές υποθέσεις.
-
-════════════════════════════════════════
-📤 OUTPUT (Ελληνικά, Markdown)
-════════════════════════════════════════
-
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
-
-### 🔍 Data Verification Report
-Τι βρήκα / δεν βρήκα — πριν αρχίσει η ανάλυση.
-(Διαφάνεια: ποιες μετρικές είναι [WC26] και ποιες [EST])
-
-### 📋 Περιβάλλον Αγώνα
-| Παράμετρος | Τιμή | Πηγή | Επίδραση |
-|------------|------|------|----------|
-| Διαιτητής | Όνομα (χώρα) | [WC26/EST] | ... |
-| Κάρτες/αγώνα | X.X🟨 X.X🟥 | [REF STATS] | ... |
-| Θερμοκρασία | X°C | [WEATHER] | ... |
-| Υγρασία | X% | [WEATHER] | ... |
-
-### 🏥 Ρόστερ & Διαθεσιμότητα
-**{h_t}:** [✗ Τραυματίες] [⚠️ Αμφίβολοι] [✓ Επιστροφές]
-**{a_t}:** [✗ Τραυματίες] [⚠️ Αμφίβολοι] [✓ Επιστροφές]
-
-### 📊 Advanced Data & xG Dashboard
-| Μετρική | {h_t} | Πηγή | {a_t} | Πηγή |
-|---------|--------|------|--------|------|
-| xG | X.XX | [WC26] | X.XX | [WC26] |
-| xGOT | X.XX | [WC26] | X.XX | [WC26] |
-| Σουτ εντός | XX% | [WC26] | XX% | [WC26] |
-| PPDA | X.X | [WC26] | X.X | [WC26] |
-| Δοκάρια | X | [WC26] | X | [WC26] |
-| Γκολ 1ο ημίχρ. | X | [WC26] | X | [WC26] |
-
-### ⚔️ Tactical & Key Matchups
-**{h_t} [X-X-X] vs {a_t} [X-X-X]**
-🔑 Matchup #1 | 🔑 Matchup #2
-⚠️ Ευάλωτη ζώνη {h_t} | ⚠️ Ευάλωτη ζώνη {a_t}
-
-### 🏟️ Historical Pattern — Αγώνας #{match_number}
-| Διοργάνωση | Αγώνας | Σκορ | Γκολ | Κάρτες | Pattern |
-|------------|--------|------|------|--------|---------|
-| WC 2022 | ... | ... | ... | ... | ... |
-| WC 2018 | ... | ... | ... | ... | ... |
-| WC 2014 | ... | ... | ... | ... | ... |
-
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα | Πηγή | Confidence |
-|-----------|----------|------------|------|------------|
-| Αποτέλεσμα 1X2 | H/X/A | XX/XX/XX% | [WC26+Bayes] | X/10 |
-| Πιο πιθανό σκορ | X-X | XX% | [Poisson] | X/10 |
-| Over 2.5 | Y/N | XX% | [xG sum] | X/10 |
-| BTTS | Y/N | XX% | [Attack/Def] | X/10 |
-| Over 9.5 κάρτες | Y/N | XX% | [Ref+H2H] | X/10 |
-| Πέναλτι | Y/N | XX% | [Ref+Box] | X/10 |
-| Κόκκινη | Y/N | XX% | [Ref+H2H] | X/10 |
-| Γκολ 1ου ημιχρ. | Y/N | XX% | [1H trend] | X/10 |
-
-> 💡 Value Bets: [μόνο αν prob% > implied odds probability]
-
-### 🎯 Strategic Conclusion
-[3-4 προτάσεις βασισμένες σε verified data]
-
-**Confidence Score: X/10**
-*(Αυτόματη μείωση -1 για κάθε μετρική με [EST] tag)***
+                with st.spinner("Πραγματοποιώ αναζήτηση στο Web για live δεδομένα..."):
+                    
+                    # ΝΕΟ PROMPT ΜΕ ΕΜΦΑΣΗ ΣΤΟ SEARCH
+                    rigorous_prompt = f"""
+                    SYSTEM INSTRUCTION: You must use the Google Search tool before answering. 
+                    The current date is {datetime.now().strftime('%Y-%m-%d')}.
+                    The World Cup 2026 is currently ongoing. 
+                    
+                    TASK: Analyze Match #{match_number}: {h_t} vs {a_t}.
+                    
+                    STEP 1: Use Google Search to find the ACTUAL results and stats of the PREVIOUS matches of {h_t} and {a_t} in World Cup 2026.
+                    STEP 2: Search for the official lineup, referee assignments, and injury reports for this specific match.
+                    STEP 3: If the match has not happened yet, get the latest xG and performance data from their first group match.
+                    
+                    CRITICAL RULE: Do NOT say "since the tournament hasn't happened". The tournament IS happening NOW. If you cannot find data, state "Data not yet updated in search results" but DO NOT invent historical filler.
+                    
+                    OUTPUT SECTIONS (In Greek):
+                    1. 🌐 Live Search Verification (Τι βρέθηκε στο διαδίκτυο τώρα)
+                    2. 📊 Ανάλυση Προηγούμενου Αγώνα WC2026 (Σκορ, xG, Κάρτες)
+                    3. ⚖️ Διαιτητής & Συνθήκες (Από live search)
+                    4. 🔮 Πρόβλεψη βάσει Φόρμας Διοργάνωσης
+                    5. 🎯 Betting Value
+                    
+                    Additional Notes: {extra_notes}
                     """
-                    ans = Μετράω_τα_κουκιά(working_model, advanced_prompt)
-                    st.markdown("---"); st.markdown(ans)
+                    
+                    # Κλήση με tools
+                    response = model.generate_content(rigorous_prompt)
+                    
+                    st.markdown("---")
+                    # Εμφάνιση της απάντησης
+                    if response.text:
+                        st.markdown(response.text)
+                    else:
+                        st.warning("Το μοντέλο δεν επέστρεψε κείμενο. Δοκιμάστε ξανά.")
         except Exception as e: st.error(f"AI Connection Error: {e}")
