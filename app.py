@@ -333,20 +333,15 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Live Grounding Edition)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Pro Analytical Engine)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # ΔΙΟΡΘΩΣΗ: Το σωστό εργαλείο ονομάζεται google_search_retrieval
-            tools = [{"google_search_retrieval": {}}] 
-            
-            model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash', # ή gemini-1.5-pro
-                tools=tools
-            )
+            # Επιλογή μοντέλου - Δοκιμάζουμε το 1.5-flash που είναι το πιο σταθερό
+            MODEL_ID = "gemini-1.5-flash" 
             
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -355,43 +350,62 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Η Γερμανία έχει 2 τιμωρημένους...")
 
-            # Προετοιμασία των δεδομένων του δικού μας τουρνουά για το AI
+            # Συλλογή δεδομένων από το Portal
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
             for fm in finished_matches:
                 h_n = TEAMS_MAP[fm['h_id']]['n']
                 a_n = TEAMS_MAP[fm['a_id']]['n']
-                context_data += f"Αγώνας: {h_n} {fm['sh']}-{fm['sa']} {a_n} (Κάρτες {fm['y_h']}:{fm['y_a']})\n"
+                context_data += f"Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("Συνδυάζω τα δεδομένα του Portal με ζωντανή αναζήτηση..."):
+                with st.spinner("Αναλύω δεδομένα και ιστορικό..."):
+                    
+                    # Προσπάθεια δημιουργίας μοντέλου ΜΕ Google Search
+                    try:
+                        # Δοκιμή με το εργαλείο 'google_search_retrieval' στη νέα του μορφή
+                        model = genai.GenerativeModel(
+                            model_name=MODEL_ID,
+                            tools=[{"google_search_retrieval": {}}]
+                        )
+                        use_search = True
+                    except:
+                        # Αν αποτύχει, fallback στο απλό μοντέλο
+                        model = genai.GenerativeModel(MODEL_ID)
+                        use_search = False
                     
                     full_prompt = f"""
-                    ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ: {datetime.now().strftime('%d/%m/%2026')} (Simulation Time)
+                    CONTEXT: World Cup 2026 Simulation. 
+                    CURRENT DATE: June 17, 2026.
+                    PORTAL DATA (Results so far):
+                    {context_data if context_data else "No matches played yet."}
                     
-                    ΔΕΔΟΜΕΝΑ ΤΟΥΡΝΟΥΑ (Μέχρι τώρα στο Portal):
-                    {context_data if context_data else "Δεν έχουν γίνει ακόμα αγώνες."}
+                    UPCOMING MATCH: #{match_number} | {h_t} vs {a_t}
+                    USER NOTES: {extra_notes}
                     
-                    ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση για τον Αγώνα #{match_number}: {h_t} vs {a_t}
-                    
-                    ΟΔΗΓΙΕΣ:
-                    1. Χρησιμοποίησε το Google Search για να βρεις την πραγματική ποιότητα των ρόστερ των ομάδων (παίκτες, τραυματισμοί, πρόσφατη φόρμα στην πραγματικότητα).
-                    2. Σύγκρινε τα παραπάνω με τα αποτελέσματα που σου έδωσα από το δικό μου Portal (αν υπάρχουν).
-                    3. Κάνε μια επαγγελματική στοιχηματική πρόβλεψη (Σκορ, Over/Under, Κάρτες).
-                    4. Μην πεις "το Μουντιάλ δεν έχει γίνει". Συμπεριφέρσου σαν να είμαστε στις 17 Ιουνίου 2026.
-                    
-                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
-                    
-                    Απάντησε στα Ελληνικά με Markdown.
+                    INSTRUCTIONS:
+                    1. Act as a pro football betting analyst.
+                    2. Use your internal knowledge of these teams' real-world quality and rosters.
+                    3. Combine this with the Portal results provided above.
+                    4. Provide: 
+                       - Brief tactical analysis.
+                       - Score prediction.
+                       - Betting tip (e.g., Over 2.5, BTTS, or 1X2).
+                    5. Language: Greek.
+                    6. Never mention that the tournament hasn't happened yet.
                     """
                     
-                    response = model.generate_content(full_prompt)
-                    
-                    st.markdown("---")
-                    if response.text:
-                        st.markdown(response.text)
-                    else:
-                        st.error("Το AI δεν μπόρεσε να απαντήσει. Δοκίμασε χωρίς το Google Search ή έλεγξε το API Key.")
+                    try:
+                        response = model.generate_content(full_prompt)
+                        st.markdown("---")
+                        if response.text:
+                            if not use_search:
+                                st.caption("⚠️ Σημείωση: Η ανάλυση έγινε χωρίς ζωντανή αναζήτηση λόγω περιορισμών του API Key.")
+                            st.markdown(response.text)
+                        else:
+                            st.error("Το AI επέστρεψε κενή απάντηση.")
+                    except Exception as e:
+                        st.error(f"Σφάλμα κατά την παραγωγή περιεχομένου: {e}")
                         
         except Exception as e: 
-            st.error(f"Σφάλμα: {e}")
+            st.error(f"Γενικό Σφάλμα: {e}")
