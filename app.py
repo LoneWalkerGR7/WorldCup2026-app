@@ -168,7 +168,7 @@ def reset_all_tournament():
 
 def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
     
     google_search_tool = {
         "google_search_retrieval": {
