@@ -166,11 +166,20 @@ def reset_all_tournament():
     st.cache_data.clear()
     st.rerun()
 
-@st.cache_data(ttl=3600)
 def Μετράω_τα_κουκιά(model_id, prompt):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(model_id)
-    return model.generate_content(prompt).text
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    
+    # Google Search grounding tool
+    google_search_tool = genai.protos.Tool(
+        google_search=genai.protos.GoogleSearch()
+    )
+    
+    response = model.generate_content(
+        prompt,
+        tools=[google_search_tool]
+    )
+    return response.text
 
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
