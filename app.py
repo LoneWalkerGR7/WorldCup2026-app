@@ -333,63 +333,48 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Pro Analytical Engine)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Advanced Analytical Engine)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # --- ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
-            # Ανιχνεύουμε ποια ονόματα μοντέλων δέχεται το API σου
+            # --- Δυναμική Επιλογή Μοντέλου ---
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            
-            # Επιλέγουμε το καλύτερο διαθέσιμο (προτεραιότητα στο 1.5-flash)
             if 'models/gemini-1.5-flash' in available_models:
                 SELECTED_MODEL = 'models/gemini-1.5-flash'
-            elif 'models/gemini-1.5-pro' in available_models:
-                SELECTED_MODEL = 'models/gemini-1.5-pro'
             else:
-                SELECTED_MODEL = available_models[0] # Fallback στο πρώτο διαθέσιμο
+                SELECTED_MODEL = available_models[0]
 
+            # --- Είσοδος Δεδομένων ---
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Η Γερμανία έχει 2 τιμωρημένους...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής (π.χ. ρεπορτάζ, καιρός):", placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο βασικός τερματοφύλακας της Ελβετίας...")
 
-            # Συλλογή δεδομένων από το Portal
+            # --- Συλλογή Δεδομένων από το Simulator (Context) ---
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
             for fm in finished_matches:
                 h_n = TEAMS_MAP[fm['h_id']]['n']
                 a_n = TEAMS_MAP[fm['a_id']]['n']
-                context_data += f"Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
+                context_data += f"Αγώνας: {h_n} {fm['sh']}-{fm['sa']} {a_n} (Κίτρινες {fm['y_h']}:{fm['y_a']}, Κόκκινες {fm['r_h']}:{fm['r_a']})\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner(f"Αναλύω δεδομένα με το μοντέλο {SELECTED_MODEL}..."):
-
+                with st.spinner("Εκτελώ Chain-of-Thought ανάλυση και Web Search..."):
                     
-                    # Προσπάθεια κλήσης ΜΕ Google Search (grounding)
-                    # Χρησιμοποιούμε τη νέα σύνταξη που είναι πιο σταθερή
-                    try:
-                        model = genai.GenerativeModel(
-                            model_name=SELECTED_MODEL,
-                            tools=[{"google_search_retrieval": {}}]
-                        )
-                        prompt_content = f"CONTEXT: World Cup 2026. Data: {context_data}. Analyze Match #{match_number}: {h_t} vs {a_t}. Notes: {extra_notes}. Answer in Greek."
-                        response = model.generate_content(prompt_content)
-                    except Exception as e:
-                        # Αν το Search αποτύχει (π.χ. λόγω περιοχής), κάνουμε απλή κλήση
-                        model = genai.GenerativeModel(model_name=SELECTED_MODEL)
-                        prompt_content = f"CONTEXT: World Cup 2026 Simulation. Previous Results: {context_data}. Upcoming: {h_t} vs {a_t}. Notes: {extra_notes}. Provide score prediction and betting tip in Greek."
-                        response = model.generate_content(prompt_content)
-                        advanced_prompt = f"""
+                    # Το δικό σου Advanced Prompt
+                    full_prompt = f"""
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
 
 Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+ΕΠΙΠΛΕΟΝ ΔΕΔΟΜΕΝΑ ΑΠΟ ΤΟ ΤΟΠΙΚΟ ΜΟΥ SIMULATOR (Μουντιάλ 2026):
+{context_data if context_data else "Δεν υπάρχουν ακόμα προηγούμενοι αγώνες στο simulator."}
 
 ════════════════════════════════════════
 📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
@@ -520,12 +505,24 @@ with tabs[6]:
  
 **Συνολικό Confidence Score: X/10**
 """
+
+                    # Προσπάθεια κλήσης με Google Search Tool
+                    try:
+                        model = genai.GenerativeModel(
+                            model_name=SELECTED_MODEL,
+                            tools=[{"google_search_retrieval": {}}]
+                        )
+                        response = model.generate_content(full_prompt)
+                    except:
+                        # Fallback αν το εργαλείο αναζήτησης αποτύχει
+                        model = genai.GenerativeModel(model_name=SELECTED_MODEL)
+                        response = model.generate_content(full_prompt)
                     
                     st.markdown("---")
                     if response.text:
                         st.markdown(response.text)
                     else:
-                        st.error("Δεν βρέθηκε απάντηση.")
-                        
-        except Exception as e: 
-            st.error(f"❌ Σφάλμα Σύνδεσης: {e}. Δοκίμασε να αναβαθμίσεις το google-generativeai στο requirements.txt")
+                        st.error("Το AI δεν επέστρεψε δεδομένα.")
+
+        except Exception as e:
+            st.error(f"❌ Σφάλμα: {e}")
