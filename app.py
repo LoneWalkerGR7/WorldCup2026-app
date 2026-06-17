@@ -333,62 +333,80 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Advanced Analysis)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Real Web Intelligence)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
             genai.configure(api_key=api_key)
             
-            # --- ΔΥΝΑΜΙΚΗ ΑΝΙΧΝΕΥΣΗ ΜΟΝΤΕΛΟΥ ---
-            # Βρίσκουμε ποια μοντέλα είναι διαθέσιμα για το κλειδί σου
+            # --- 1. ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
+            # Ανιχνεύουμε ποιο μοντέλο είναι διαθέσιμο (προτεραιότητα στο 1.5 Pro για καλύτερο Search)
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            # Επιλογή του πιο σύγχρονου διαθέσιμου
-            if 'models/gemini-1.5-flash' in available_models:
-                working_model_name = 'models/gemini-1.5-flash'
-            elif 'models/gemini-1.5-pro' in available_models:
-                working_model_name = 'models/gemini-1.5-pro'
-            else:
-                working_model_name = available_models[0]
-
+            SELECTED_MODEL = 'models/gemini-1.5-pro' if 'models/gemini-1.5-pro' in available_models else 'models/gemini-1.5-flash'
+            
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Αναφορές για τραυματισμούς, καιρός...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🔍 Αναζήτηση δεδομένων και ανάλυση..."):
+                with st.spinner(f"🌐 Πραγματοποιώ Web Search για τον Αγώνα #{match_number}..."):
                     
-                    # ΠΡΟΕΤΟΙΜΑΣΙΑ ΠΡΟΜΠΤ
-                    prompt = f"""
-                    ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 βρίσκεται σε εξέλιξη.
-                    ΑΓΩΝΑΣ #{match_number}: {h_t} vs {a_t}.
-                    
-                    ΟΔΗΓΙΕΣ:
-                    1. Χρησιμοποίησε τις γνώσεις σου για να βρεις τον ΠΡΑΓΜΑΤΙΚΟ διαιτητή του αγώνα και την κατάσταση των ομάδων σήμερα.
-                    2. Ανάλυσε τα στατιστικά xG και τη φόρμα τους από τους πρώτους αγώνες του Μουντιάλ 2026.
-                    3. Δώσε πρόβλεψη σκορ και value bet.
-                    
-                    ΣΗΜΕΙΩΣΕΙΣ: {extra_notes}
-                    Απάντησε στα Ελληνικά με Markdown.
-                    """
+                    # --- 2. ΤΟ ΔΙΚΟ ΣΟΥ PROMPT (ΕΜΠΛΟΥΤΙΣΜΕΝΟ) ---
+                    advanced_prompt = f"""
+ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
+Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
 
+Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+════════════════════════════════════════
+📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
+════════════════════════════════════════
+- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
+- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
+
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Χρησιμοποίησε το Google Search για να βρεις ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει στο γήπεδο διεξαγωγής.
+2. ΦΟΡΜΑ: Αναζήτησε τα xG και τα αποτελέσματα του 1ου αγώνα των {h_t} και {a_t} στο Μουντιάλ 2026 (που έγινε πριν λίγες μέρες).
+3. ΙΣΤΟΡΙΚΟ: Χρησιμοποίησε το Google Search για να βρεις τι έγινε ιστορικά στον αγώνα με το νούμερο #{match_number} (π.χ. "Match 26 of World Cup 2022", "Match 26 of World Cup 2018"). Ανέφερε ομάδες και σκορ.
+
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+### 🔮 Quantitative Prediction Model
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
+
+                    # --- 3. ΚΛΗΣΗ ΜΕ GOOGLE SEARCH RETRIEVAL (ΣΩΣΤΗ ΣΥΝΤΑΞΗ) ---
                     try:
-                        # Δοκιμή 1: Προσπάθεια με Google Search (Grounding)
+                        # Χρησιμοποιούμε τη νέα έκδοση του εργαλείου
                         model = genai.GenerativeModel(
-                            model_name=working_model_name,
+                            model_name=SELECTED_MODEL,
                             tools=[{"google_search_retrieval": {}}]
                         )
-                        response = model.generate_content(prompt)
+                        response = model.generate_content(advanced_prompt)
+                        st.markdown("---")
                         st.markdown(response.text)
                     except Exception as e:
-                        # Δοκιμή 2: Αν αποτύχει το Search (Error 404/400), κάνουμε απλή κλήση
-                        model = genai.GenerativeModel(model_name=working_model_name)
-                        response = model.generate_content(prompt)
-                        st.info("💡 Η ανάλυση βασίστηκε σε real-time data προσομοίωσης.")
+                        # Αν το tool βγάλει 404, κάνουμε fallback χωρίς tools αλλά με το ίδιο prompt
+                        model_simple = genai.GenerativeModel(SELECTED_MODEL)
+                        response = model_simple.generate_content(advanced_prompt)
+                        st.info("💡 Η ανάλυση ολοκληρώθηκε (Safe Mode - Search Limited)")
+                        st.markdown("---")
                         st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"❌ Σφάλμα συστήματος: {e}")
+            st.error(f"❌ Connection Error: {e}")
