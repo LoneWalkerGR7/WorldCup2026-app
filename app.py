@@ -3,46 +3,58 @@ import pandas as pd
 import random
 import google.generativeai as genai
 import os
+import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 
-# --- ΣΥΝΔΕΣΗ ΜΕ SUPABASE ---
-# Βεβαιώσου ότι έχεις SUPABASE_URL και SUPABASE_KEY στα Secrets του Streamlit
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
+# --- ΣΥΝΔΕΣΗ ΜΕ ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ (SUPABASE) ---
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = get_supabase_client()
 
 def load_data():
     try:
-        # Τραβάμε τα δεδομένα από τη γραμμή με id=1
         res = supabase.table("tournament_persistence").select("data").eq("id", 1).execute()
         if res.data and len(res.data) > 0:
-            return res.data[0]['data']
+            raw_data = res.data[0]['data']
+            # Αν τα δεδομένα ήρθαν ως string, τα μετατρέπουμε σε λίστα
+            if isinstance(raw_data, str):
+                return json.loads(raw_data)
+            return raw_data
     except Exception as e:
         st.error(f"Σφάλμα κατά τη φόρτωση: {e}")
     return None
 
 def save_data(data):
     try:
-        # Χρήση UPSERT: Αν υπάρχει το id:1 το αλλάζει, αν δεν υπάρχει το φτιάχνει
         supabase.table("tournament_persistence").upsert({"id": 1, "data": data}).execute()
     except Exception as e:
         st.error(f"Σφάλμα κατά την αποθήκευση: {e}")
 
-# --- 1. CONFIG & CSS ---
-st.set_page_config(page_title="World Cup 2026 Ultimate", layout="wide", page_icon="🏆")
-st.markdown("""<style>
+# --- 1. CONFIG & CSS (COSMIC THEME) ---
+st.set_page_config(page_title="World Cup 2026 Pro Stats", layout="wide", page_icon="🏆")
+
+st.markdown("""
+    <style>
     .stApp { background-color: #020617; color: white !important; font-family: 'Inter', sans-serif; }
+    [data-testid="stHeader"] { background: rgba(0,0,0,0); }
     h1, h2, h3, h4, h5, h6, label, span, p, .stMarkdown, [data-testid="stTable"] { color: white !important; }
-    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; }
+    .stat-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
     .stat-val { font-size: 22px; font-weight: 800; color: #06b6d4 !important; }
+    div[data-testid="stTable"] { background-color: #0f172a; border-radius: 10px; border: 1px solid #1e293b; padding: 5px; }
     button[data-testid="stBaseButton-secondary"] { color: black !important; background-color: #f1f5f9 !important; font-weight: 800 !important; border: 2px solid #ffffff !important; text-transform: uppercase; }
     .match-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 12px; margin-bottom: 10px; }
+    .group-tag { background: rgba(6, 182, 212, 0.2); color: #22d3ee !important; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: bold; }
     button[data-testid="stBaseButton-primary"] { background-color: #ef4444 !important; color: white !important; border: none !important; font-weight: 800 !important; }
     .score-box { padding: 10px; border-radius: 8px; text-align: center; margin: 5px; font-weight: bold; border: 1px solid #1e293b; min-width: 65px; }
     .score-out { background-color: #064e3b; color: #10b981 !important; border: 1px solid #10b981; }
     .score-delayed { background-color: #450a0a; color: #ef4444 !important; border: 1px solid #ef4444; opacity: 0.6; }
-</style>""", unsafe_allow_html=True)
+    .turnaround-card { background: #1e293b; padding: 10px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #06b6d4; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 2. ΔΕΔΟΜΕΝΑ ΟΜΑΔΩΝ ---
 TEAMS_MAP = {
@@ -112,7 +124,7 @@ RAW_MATCHES = [
 ]
 
 # --- 4. SESSION STATE LOGIC ---
-if 'wc_matches' not in st.session_state:
+def init_session():
     db_data = load_data()
     if db_data and len(db_data) > 0:
         st.session_state.wc_matches = db_data
@@ -127,6 +139,9 @@ if 'wc_matches' not in st.session_state:
             })
         st.session_state.wc_matches = matches
 
+if 'wc_matches' not in st.session_state:
+    init_session()
+
 # --- 5. FUNCTIONS ---
 def auto_play():
     for m in st.session_state.wc_matches:
@@ -137,7 +152,7 @@ def auto_play():
             m['r_a'] = random.randint(0, 1) if random.random() > 0.9 else 0
             if m['sh'] > m['sa'] and random.random() > 0.85: m['turn'] = "Home SCORE First and LOSE"
             elif m['sa'] > m['sh'] and random.random() > 0.85: m['turn'] = "Away SCORE First and LOSE"
-            res = "X"; 
+            res = "X"
             if m['sh'] > m['sa']: res = "1"
             elif m['sa'] > m['sh']: res = "2"
             m['htft'] = f"{random.choice(['1','X','2'])}/{res}"
@@ -145,10 +160,9 @@ def auto_play():
     save_data(st.session_state.wc_matches)
     st.rerun()
 
-def reset_tourney():
-    st.session_state.wc_matches = []
-    del st.session_state['wc_matches']
+def reset_all_tournament():
     save_data([])
+    st.session_state.clear()
     st.cache_data.clear()
     st.rerun()
 
@@ -177,7 +191,7 @@ with c6: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color
 st.write("")
 b1, b2 = st.columns([2, 1])
 with b1: st.button("⚡ ΠΑΙΞΕ ΤΟ ΠΑΙΧΝΙΔΙ (SIMULATOR)", on_click=auto_play, type="primary")
-with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset_tourney, type="secondary")
+with b2: st.button("🔄 RESET ALL TOURNAMENT", on_click=reset_all_tournament, type="secondary")
 
 tabs = st.tabs(["📅 ΗΜΕΡΟΛΟΓΙΟ", "📊 ΒΑΘΜΟΛΟΓΙΕΣ", "📈 ΠΟΡΕΙΑ ΟΜΑΔΩΝ", "📊 ΑΝΑΛΥΣΗ ΣΚΟΡ", "🔄 ΑΝΑΤΡΟΠΕΣ", "🌓 ΗΜΙΧΡΟΝΑ / ΤΕΛΙΚΑ", "🔮 ΠΡΟΒΛΕΨΕΙΣ"])
 
@@ -221,7 +235,7 @@ with tabs[0]:
                 htft_v = st.selectbox("Ημίχρονο/Τελικό", ["TBD", "1/1", "1/X", "1/2", "X/1", "X/X", "X/2", "2/1", "2/X", "2/2"], index=0, key=f"htft_{m['id']}")
                 if st.button("Save Result", key=f"btn{m['id']}"):
                     m.update({"sh": sh_v, "sa": sa_v, "fin": True, "y_h": yh_v, "y_a": ya_v, "r_h": rh_v, "r_a": ra_v, "p_h": ph_v, "p_a": pa_v, "og_h": oh_v, "og_a": oa_v, "ref": ref_v, "turn": turn_v, "htft": htft_v})
-                    save_data(st.session_state.wc_matches)
+                    save_to_db(st.session_state.wc_matches)
                     st.rerun()
 
 with tabs[1]:
@@ -323,20 +337,52 @@ with tabs[6]:
     if api_key:
         try:
             genai.configure(api_key=api_key)
+            # ΑΥΤΟΜΑΤΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             working_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in available_models else available_models[0]
+            
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός...")
+            
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("Analyzing..."):
                     advanced_prompt = f"""
-                    You are a top football analyst. Analyze match #{match_number} | {h_t} vs {a_t}. USER NOTES: {extra_notes}.
-                    Use chain-of-thought analysis and web search for injuries/referee. Return deep prediction in Greek.
-                    """
+Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
+
+Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+════════════════════════════════════════
+📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
+════════════════════════════════════════
+- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
+- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
+
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει.
+2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
+
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+### 🔮 Quantitative Prediction Model
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
                     ans = get_ai_prediction(working_model, advanced_prompt)
-                    st.markdown("---"); st.markdown(ans)
-        except Exception as e: st.error(f"Error: {e}")
+                    st.markdown("---")
+                    st.markdown(ans)
+        except Exception as e: st.error(f"AI Connection Error: {e}")
