@@ -166,25 +166,11 @@ def reset_all_tournament():
     st.cache_data.clear()
     st.rerun()
 
-import requests
-
+@st.cache_data(ttl=3600)
 def Μετράω_τα_κουκιά(model_id, prompt):
-    api_key = st.secrets["GEMINI_API_KEY"]
-    
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "tools": [{"google_search_retrieval": {}}]
-    }
-    
-    response = requests.post(url, json=payload)
-    data = response.json()
-    
-    if "error" in data:
-        return f"API Error: {data['error']['message']}"
-    
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(model_id)
+    return model.generate_content(prompt).text
 
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
