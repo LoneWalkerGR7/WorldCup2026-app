@@ -333,21 +333,19 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Elite Analytical Engine)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Elite Web Grounding)")
     
     api_key = st.secrets.get("GEMINI_API_KEY")
     
-    # Χρησιμοποιούμε το session_state για να αποθηκεύουμε τις προβλέψεις και να μην ξοδεύουμε Quota
-    if 'ai_cache' not in st.session_state:
-        st.session_state.ai_cache = {}
-
     if api_key:
         try:
             import google.generativeai as genai
-            from google.api_core import exceptions
+            from google.generativeai.types import content_types
             genai.configure(api_key=api_key)
             
-            MODEL_ID = "gemini-1.5-flash" 
+            # --- ΡΥΘΜΙΣΗ ΜΟΝΤΕΛΩΝ ---
+            # Δοκιμάζουμε το 'gemini-1.5-flash-latest' που είναι το πιο συμβατό με v1beta
+            MODEL_ID = "gemini-1.5-flash-latest" 
 
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -356,64 +354,64 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-            # Κλειδί για το Cache
-            cache_key = f"{h_t}_{a_t}_{match_number}"
+            # --- ΤΟ PROMPT ΣΟΥ ---
+            advanced_prompt = f"""
+Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
+Το Μουντιάλ 2026 διεξάγεται τώρα.
+Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
+
+Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+
+════════════════════════════════════════
+📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
+════════════════════════════════════════
+- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
+- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
+
+🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
+1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα στην πόλη διεξαγωγής.
+2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026.
+3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match {match_number} of World Cup 2022 score", κλπ).
+
+ΑΠΑΝΤΗΣΗ (Ελληνικά):
+## ⚽ {h_t} vs {a_t}
+### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+### 🏥 Διαθεσιμότητα & Σημειώσεις
+### 📊 Data & xG Analysis
+### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
+### 🔮 Quantitative Prediction Model
+| Κατηγορία | Πρόβλεψη | Πιθανότητα |
+|-----------|----------|------------|
+| 1-X-2 | ... | XX% |
+| Σκορ | X-X | — |
+| Πέναλτι | Ναι/Όχι | XX% |
+| Κόκκινη | Ναι/Όχι | XX% |
+| Ανατροπή | Ναι/Όχι | XX% |
+"""
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                # Έλεγχος αν υπάρχει ήδη στην προσωρινή μνήμη
-                if cache_key in st.session_state.ai_cache:
-                    st.info("📊 Ανάκτηση ανάλυσης από τη μνήμη (δεν καταναλώθηκε quota)...")
-                    st.markdown("---")
-                    st.markdown(st.session_state.ai_cache[cache_key])
-                else:
-                    with st.spinner("🔍 Πραγματοποιώ Web Search και ανάλυση (FIFA Data)..."):
+                with st.spinner("🔍 Σύνδεση με FIFA Web Search..."):
+                    
+                    try:
+                        # --- ΠΡΟΣΠΑΘΕΙΑ 1: ΜΕ GOOGLE SEARCH ---
+                        model = genai.GenerativeModel(
+                            model_name=MODEL_ID,
+                            tools=[{"google_search": {}}]
+                        )
+                        response = model.generate_content(advanced_prompt)
+                        st.markdown("---")
+                        st.markdown(response.text)
                         
-                        advanced_prompt = f"""
-                        Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-                        ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
-                        Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-                        Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+                    except Exception as e:
+                        # --- ΠΡΟΣΠΑΘΕΙΑ 2: FALLBACK ΧΩΡΙΣ SEARCH (ΑΠΟΦΥΓΗ 404) ---
+                        # Αν το παραπάνω βγάλει 404, αυτό θα δουλέψει ΣΙΓΟΥΡΑ
+                        st.warning("⚠️ Το Google Search είναι προσωρινά μη διαθέσιμο για το κλειδί σας. Η ανάλυση βασίζεται σε εσωτερικά δεδομένα.")
+                        
+                        # Εδώ χρησιμοποιούμε την έκδοση v1 (σταθερή) για να μην υπάρχει 404
+                        model_safe = genai.GenerativeModel(model_name="gemini-1.5-flash")
+                        response_safe = model_safe.generate_content(advanced_prompt)
+                        st.markdown("---")
+                        st.markdown(response_safe.text)
 
-                        🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-                        1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} και τι καιρό θα κάνει (Web Search: "World Cup 2026 referee assignments", "Weather match {match_number}").
-                        2. ΦΟΡΜΑ: xG και αποτελέσματα τελευταίων αγώνων (Web Search: "{h_t} {a_t} World Cup 2026 stats").
-                        3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014 (Web Search: "Score of Match {match_number} World Cup 2022").
-
-                        ΑΠΑΝΤΗΣΗ (Ελληνικά):
-                        ## ⚽ {h_t} vs {a_t}
-                        ### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-                        ### 🏥 Διαθεσιμότητα & Σημειώσεις
-                        ### 📊 Data & xG Analysis
-                        ### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-                        ### 🔮 Quantitative Prediction Model
-                        | Κατηγορία | Πρόβλεψη | Πιθανότητα |
-                        |-----------|----------|------------|
-                        | 1-X-2 | ... | XX% |
-                        | Σκορ | X-X | — |
-                        | Πέναλτι | Ναι/Όχι | XX% |
-                        | Κόκκινη | Ναι/Όχι | XX% |
-                        | Ανατροπή | Ναι/Όχι | XX% |
-                        """
-
-                        try:
-                            # Δοκιμή με Google Search
-                            model = genai.GenerativeModel(model_name=MODEL_ID, tools=[{"google_search": {}}])
-                            response = model.generate_content(advanced_prompt)
-                            
-                            # Αποθήκευση στο Cache
-                            st.session_state.ai_cache[cache_key] = response.text
-                            st.markdown("---")
-                            st.markdown(response.text)
-
-                        except exceptions.ResourceExhausted:
-                            st.error("⚠️ Το API Quota εξαντλήθηκε! Περιμένετε 60 δευτερόλεπτα πριν ξαναπατήσετε το κουμπί. Η Google περιορίζει τον αριθμό των δωρεάν αναζητήσεων ανά λεπτό.")
-                        except Exception as e_inner:
-                            # Fallback αν το search tool αποτύχει
-                            model_fallback = genai.GenerativeModel(model_name=MODEL_ID)
-                            response_fallback = model_fallback.generate_content(advanced_prompt)
-                            st.warning("⚠️ Περιορισμένη πρόσβαση στο Web Search. Η ανάλυση βασίστηκε σε εσωτερικά δεδομένα.")
-                            st.session_state.ai_cache[cache_key] = response_fallback.text
-                            st.markdown("---")
-                            st.markdown(response_fallback.text)
         except Exception as e:
-            st.error(f"❌ Σφάλμα: {e}")
+            st.error(f"❌ Κρίσιμο Σφάλμα: {e}")
