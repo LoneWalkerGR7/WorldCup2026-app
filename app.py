@@ -166,12 +166,6 @@ def reset_all_tournament():
     st.cache_data.clear()
     st.rerun()
 
-@st.cache_data(ttl=3600)
-def Μετράω_τα_κουκιά(model_id, prompt):
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(model_id)
-    return model.generate_content(prompt).text
-
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
 fin_m = [m for m in st.session_state.wc_matches if m.get('fin')]
@@ -342,9 +336,6 @@ with tabs[6]:
             from google.api_core import exceptions
             genai.configure(api_key=api_key)
             
-            # Δυναμική επιλογή μοντέλου
-            MODEL_ID = "gemini-1.5-flash" 
-
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
@@ -363,9 +354,8 @@ with tabs[6]:
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner("🔍 Πραγματοποιώ Web Search και ανάλυση xG..."):
                     
-                    # ΤΟ ELITE PROMPT ΣΟΥ
                     advanced_prompt = f"""
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
+ΣΗΜΕΡΑ ΕΙΝΑΙ {datetime.now().strftime('%d/%m/%Y')}. Το Μουντιάλ 2026 διεξάγεται τώρα.
 Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
 Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought).
 
@@ -396,9 +386,9 @@ with tabs[6]:
 | Ανατροπή | Ναι/Όχι | XX% |
 """
                     try:
-                        # Κλήση με το Google Search Tool ενεργοποιημένο
+                        # Χρήση του google_search tool ΧΩΡΙΣ models/ prefix για αποφυγή 404
                         model = genai.GenerativeModel(
-                            model_name=MODEL_ID,
+                            model_name="gemini-1.5-flash",
                             tools=[{"google_search": {}}]
                         )
                         response = model.generate_content(advanced_prompt)
@@ -410,7 +400,7 @@ with tabs[6]:
                         st.error("⚠️ Το Quota εξαντλήθηκε (Σφάλμα 429). Η Google επιτρέπει λίγες αναζητήσεις ανά λεπτό. Περιμένετε 60 δευτερόλεπτα και δοκιμάστε ξανά.")
                     except Exception as e:
                         # Fallback αν το search tool αποτύχει
-                        model_simple = genai.GenerativeModel(model_name=MODEL_ID)
+                        model_simple = genai.GenerativeModel(model_name="gemini-1.5-flash")
                         response_simple = model_simple.generate_content(advanced_prompt)
                         st.warning("⚠️ Περιορισμένη πρόσβαση στο Web Search. Η ανάλυση βασίστηκε σε εσωτερικά δεδομένα.")
                         st.markdown(response_simple.text)
