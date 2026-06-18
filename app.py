@@ -335,14 +335,16 @@ with tabs[6]:
             genai.configure(api_key=api_key)
             
             # --- ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
+            # Ανιχνεύουμε ποια ονόματα μοντέλων δέχεται το API σου
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
+            # Επιλέγουμε το καλύτερο διαθέσιμο (προτεραιότητα στο 1.5-flash)
             if 'models/gemini-1.5-flash' in available_models:
                 SELECTED_MODEL = 'models/gemini-1.5-flash'
             elif 'models/gemini-1.5-pro' in available_models:
                 SELECTED_MODEL = 'models/gemini-1.5-pro'
             else:
-                SELECTED_MODEL = available_models[0]
+                SELECTED_MODEL = available_models[0] # Fallback στο πρώτο διαθέσιμο
 
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -351,72 +353,37 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Η Γερμανία έχει 2 τιμωρημένους...")
 
-            # Συλλογή δεδομένων από το Portal για το Context
+            # Συλλογή δεδομένων από το Portal
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
-            if finished_matches:
-                context_data = "ΔΕΔΟΜΕΝΑ ΑΠΟ ΤΟ ΔΙΚΟ ΜΟΥ PORTAL (Simulator 2026):\n"
-                for fm in finished_matches[-15:]: # Τελευταία 15 ματς για οικονομία tokens
-                    h_n = TEAMS_MAP[fm['h_id']]['n']
-                    a_n = TEAMS_MAP[fm['a_id']]['n']
-                    context_data += f"- Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
+            for fm in finished_matches:
+                h_n = TEAMS_MAP[fm['h_id']]['n']
+                a_n = TEAMS_MAP[fm['a_id']]['n']
+                context_data += f"Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner(f"📡 Εκτελώ Web Search και ανάλυση για τον Αγώνα #{match_number}..."):
+                with st.spinner(f"Αναλύω δεδομένα με το μοντέλο {SELECTED_MODEL}..."):
                     
-                    # ΤΟ ΔΙΚΟ ΣΟΥ ADVANCED PROMPT
-                    advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
-
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
-
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ ΤΕΛΕΥΤΑΙΑΣ ΣΤΙΓΜΗΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
-
-{context_data}
-
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΚΑΙΡΟΣ: Βρες ποιος σφυρίζει στον αγώνα #{match_number} (FIFA official appointments) και τι καιρό θα κάνει την ώρα του αγώνα στην πόλη διεξαγωγής.
-2. ΦΟΡΜΑ: xG και αποτελέσματα των πρώτων αγώνων των {h_t} και {a_t} στο Μουντιάλ 2026 (χρησιμοποίησε Google Search για να βρεις τι έγινε στις 11-16 Ιουνίου 2026).
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} στα Μουντιάλ 2022, 2018 και 2014. (Αναζήτησε: "Match {match_number} of World Cup 2022 score", κλπ).
-
-ΑΠΑΝΤΗΣΗ (Ελληνικά):
-## ⚽ {h_t} vs {a_t}
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-### 🏥 Διαθεσιμότητα & Σημειώσεις
-### 📊 Data & xG Analysis
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα |
-|-----------|----------|------------|
-| 1-X-2 | ... | XX% |
-| Σκορ | X-X | — |
-| Πέναλτι | Ναι/Όχι | XX% |
-| Κόκκινη | Ναι/Όχι | XX% |
-| Ανατροπή | Ναι/Όχι | XX% |
-"""
-
+                    # Προσπάθεια κλήσης ΜΕ Google Search (grounding)
+                    # Χρησιμοποιούμε τη νέα σύνταξη που είναι πιο σταθερή
                     try:
-                        # Κλήση ΜΕ Google Search
                         model = genai.GenerativeModel(
                             model_name=SELECTED_MODEL,
                             tools=[{"google_search_retrieval": {}}]
                         )
-                        response = model.generate_content(advanced_prompt)
-                        st.markdown("---")
-                        st.markdown(response.text)
+                        prompt_content = f"CONTEXT: World Cup 2026. Data: {context_data}. Analyze Match #{match_number}: {h_t} vs {a_t}. Notes: {extra_notes}. Answer in Greek."
+                        response = model.generate_content(prompt_content)
                     except Exception as e:
-                        # Fallback ΧΩΡΙΣ Search αν αποτύχει (π.χ. λόγω Quota ή Region)
+                        # Αν το Search αποτύχει (π.χ. λόγω περιοχής), κάνουμε απλή κλήση
                         model = genai.GenerativeModel(model_name=SELECTED_MODEL)
-                        response = model.generate_content(advanced_prompt)
-                        st.info("⚠️ Η ανάλυση ολοκληρώθηκε με εσωτερικά δεδομένα (Search Unavailable).")
-                        st.markdown("---")
+                        prompt_content = f"CONTEXT: World Cup 2026 Simulation. Previous Results: {context_data}. Upcoming: {h_t} vs {a_t}. Notes: {extra_notes}. Provide score prediction and betting tip in Greek."
+                        response = model.generate_content(prompt_content)
+                    
+                    st.markdown("---")
+                    if response.text:
                         st.markdown(response.text)
+                    else:
+                        st.error("Δεν βρέθηκε απάντηση.")
                         
         except Exception as e: 
-            st.error(f"❌ Σφάλμα: {e}")
+            st.error(f"❌ Σφάλμα Σύνδεσης: {e}. Δοκίμασε να αναβαθμίσεις το google-generativeai στο requirements.txt")
