@@ -333,83 +333,79 @@ with tabs[6]:
     
     if api_key:
         try:
-            # Ρύθμιση AI
+            # 1. Ρύθμιση του API
             genai.configure(api_key=api_key)
             
-            c1, c2 = st.columns(2)
-            # Παίρνουμε τα ονόματα των ομάδων από το TEAMS_MAP
-            all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
+            # 2. ΑΥΤΟΜΑΤΗ ΑΝΙΧΝΕΥΣΗ ΔΙΑΘΕΣΙΜΩΝ ΜΟΝΤΕΛΩΝ (Λύνει το 404)
+            # Ψάχνουμε ποια μοντέλα επιτρέπει η Google στο κλειδί σου αυτή τη στιγμή
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
+            # Επιλογή του καλύτερου διαθέσιμου με σειρά προτεραιότητας
+            if any("gemini-1.5-flash" in m for m in available_models):
+                target_model = [m for m in available_models if "gemini-1.5-flash" in m][0]
+            elif any("gemini-1.5-pro" in m for m in available_models):
+                target_model = [m for m in available_models if "gemini-1.5-pro" in m][0]
+            elif any("gemini-pro" in m for m in available_models):
+                target_model = [m for m in available_models if "gemini-pro" in m][0]
+            else:
+                target_model = available_models[0] if available_models else None
+
+            # --- UI Εισαγωγής ---
+            c1, c2 = st.columns(2)
+            all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
             h_t = c1.selectbox("Home Team", all_teams_names, key="ai_h_final")
             a_t = c2.selectbox("Away Team", all_teams_names, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός, κρισιμότητα αγώνα...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-            # --- ΣΥΛΛΟΓΗ ΔΕΔΟΜΕΝΩΝ ΑΠΟ ΤΟ SIMULATOR ΓΙΑ ΤΟ AI ---
-            # Φτιάχνουμε ένα κείμενο με τα τελευταία αποτελέσματα που έβγαλε ο χρήστης στο portal
+            # Συλλογή δεδομένων Simulator
             finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
             if finished_m:
-                context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ ΣΤΟ ΤΟΥΡΝΟΥΑ:\n"
-                for fm in finished_m[-15:]: # Τελευταία 15 ματς για context
+                context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ PORTAL:\n"
+                for fm in finished_m[-15:]:
                     h_n = TEAMS_MAP[fm['h_id']]['n']
                     a_n = TEAMS_MAP[fm['a_id']]['n']
                     context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🤖 Το AI επεξεργάζεται τα δεδομένα..."):
-                    
-                    # ΤΟ PROMPT (ΧΩΡΙΣ GOOGLE SEARCH - ΜΟΝΟ AI LOGIC)
-                    advanced_prompt = f"""
-                    Είσαι ο κορυφαίος ποδοσφαιρικός αναλυτής στον κόσμο, ειδικός στα Παγκόσμια Κύπελλα.
-                    ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 βρίσκεται σε εξέλιξη.
-                    
-                    ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση του Αγώνα #{match_number} | {h_t} vs {a_t}
-                    
-                    {context_data}
-                    
-                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes if extra_notes else "Καμία."}
-                    
-                    ΟΔΗΓΙΕΣ:
-                    1. Βασίσου στην τεράστια γνώση σου για την ποιότητα των παικτών αυτών των εθνικών ομάδων.
-                    2. Λάβε υπόψη τα αποτελέσματα που σου έδωσα παραπάνω (αν υπάρχουν) για να δεις τη φόρμα τους στο τρέχον Μουντιάλ.
-                    3. Κάνε μια επαγγελματική πρόβλεψη για xG, τελικό σκορ και κάρτες.
-                    
-                    ΑΠΟΔΟΣΗ ΣΤΑ ΕΛΛΗΝΙΚΑ (Markdown):
-                    ## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026
-                    ### 📊 Ανάλυση Αναμέτρησης
-                    (Ανάλυσε τακτική, ρόστερ και τη φόρμα τους)
-                    
-                    ### 🔮 Πρόβλεψη & Πιθανότητες
-                    | Κατηγορία | Πρόβλεψη | Πιθανότητα |
-                    |-----------|----------|------------|
-                    | Αποτέλεσμα (1-X-2) | ... | XX% |
-                    | Ακριβές Σκορ | X-X | ... |
-                    | Over 2.5 | Ναι/Όχι | XX% |
-                    | Κάρτες | Over/Under | XX% |
-                    | Πέναλτι | Ναι/Όχι | XX% |
-                    
-                    ### 🎯 Value Bet
-                    (Πρότεινε το πιο δυνατό σημείο για στοιχηματισμό)
-                    """
-
-                    try:
-                        # Χρησιμοποιούμε το στάνταρ όνομα χωρίς το "models/" πρόθεμα
-                        model = genai.GenerativeModel("gemini-1.5-flash")
-                        response = model.generate_content(advanced_prompt)
+                if not target_model:
+                    st.error("Δεν βρέθηκε διαθέσιμο μοντέλο Gemini στο κλειδί σας.")
+                else:
+                    with st.spinner(f"🤖 Το AI ({target_model}) αναλύει τα δεδομένα..."):
                         
-                        st.markdown("---")
-                        if response.text:
-                            st.markdown(response.text)
-                        else:
-                            st.error("Το AI δεν επέστρεψε κείμενο. Δοκιμάστε ξανά.")
-                            
-                    except Exception as e_ai:
-                        # Αν υπάρχει σφάλμα Quota (429), το πιάνουμε εδώ
-                        if "429" in str(e_ai):
-                            st.error("⚠️ Το API Quota εξαντλήθηκε. Περιμένετε 60 δευτερόλεπτα και δοκιμάστε ξανά.")
-                        else:
-                            st.error(f"Σφάλμα AI: {e_ai}")
+                        advanced_prompt = f"""
+                        Είσαι ο κορυφαίος ποδοσφαιρικός αναλυτής. Σήμερα είναι 18 Ιουνίου 2026.
+                        Ανάλυσε τον Αγώνα #{match_number}: {h_t} vs {a_t}.
+                        
+                        {context_data}
+                        Σημειώσεις Χρήστη: {extra_notes}
+                        
+                        Δώσε:
+                        1. Τακτική ανάλυση.
+                        2. Πρόβλεψη xG και Ακριβές Σκορ.
+                        3. Πρόβλεψη για κάρτες και πέναλτι.
+                        Απάντησε στα Ελληνικά με Markdown.
+                        """
 
-        except Exception as e:
-            st.error(f"❌ Σφάλμα Σύνδεσης: {e}")
+                        try:
+                            # Κλήση του μοντέλου που ανιχνεύσαμε
+                            model = genai.GenerativeModel(model_name=target_model)
+                            response = model.generate_content(advanced_prompt)
+                            
+                            st.markdown("---")
+                            if response.text:
+                                st.markdown(response.text)
+                            else:
+                                st.error("Κενή απάντηση από το AI.")
+                                
+                        except Exception as e_gen:
+                            # Διαχείριση Quota (429)
+                            if "429" in str(e_gen):
+                                st.error("⚠️ Quota Exceeded: Περιμένετε 60 δευτερόλεπτα.")
+                            else:
+                                st.error(f"Σφάλμα κατά την παραγωγή: {e_gen}")
+
+        except Exception as e_init:
+            st.error(f"❌ Αποτυχία σύνδεσης: {e_init}")
+            st.info("Βεβαιωθείτε ότι το GEMINI_API_KEY είναι σωστό.")
