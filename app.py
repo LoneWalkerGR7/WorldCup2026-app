@@ -332,7 +332,7 @@ with tabs[6]:
     if 'ai_results_cache' not in st.session_state:
         st.session_state.ai_results_cache = {}
 
-    api_key = st.secrets.get("GEMINI_API_KEY")
+    api_key = st.secrets.get("ANTHROPIC_API_KEY")
     
     if api_key:
         c1, c2 = st.columns(2)
@@ -370,28 +370,34 @@ with tabs[6]:
 Δώσε σύντομη τακτική ανάλυση, xG, ακριβές σκορ και πρόβλεψη για κάρτες.
 Απάντησε στα Ελληνικά με Markdown."""
 
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-                        
-                        payload = {
-                            "contents": [{"parts": [{"text": prompt}]}],
-                            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}
-                        }
-                        
                         import requests as req
-                        response = req.post(url, json=payload, timeout=30)
+                        response = req.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": api_key,
+                                "anthropic-version": "2023-06-01",
+                                "content-type": "application/json"
+                            },
+                            json={
+                                "model": "claude-haiku-4-5-20251001",
+                                "max_tokens": 1024,
+                                "messages": [{"role": "user", "content": prompt}]
+                            },
+                            timeout=30
+                        )
                         
                         if response.status_code == 200:
                             data = response.json()
-                            result_text = data['candidates'][0]['content']['parts'][0]['text']
+                            result_text = data['content'][0]['text']
                             st.session_state.ai_results_cache[cache_id] = result_text
                             st.markdown("---")
                             st.markdown(result_text)
                         elif response.status_code == 429:
-                            st.error("⚠️ Quota Exceeded. Περίμενε 1 λεπτό και ξαναπάτα.")
+                            st.error("⚠️ Rate limit. Περίμενε λίγο και ξαναπάτα.")
                         else:
                             st.error(f"API Error {response.status_code}: {response.text}")
 
                 except Exception as e:
                     st.error(f"Σφάλμα: {str(e)}")
     else:
-        st.warning("🚨 Δεν βρέθηκε GEMINI_API_KEY στα Secrets.")
+        st.warning("🚨 Δεν βρέθηκε ANTHROPIC_API_KEY στα Secrets.")
