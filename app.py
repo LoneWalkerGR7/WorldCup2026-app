@@ -327,13 +327,12 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Elite Web Grounding)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (AI Simulation Engine)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
-            import google.generativeai as genai
-            from google.api_core import exceptions
+            # Ρύθμιση του API μια φορά στην αρχή
             genai.configure(api_key=api_key)
             
             c1, c2 = st.columns(2)
@@ -343,38 +342,38 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες, ρεπορτάζ...")
 
-            # Συλλογή δεδομένων από το δικό σου Simulator για να τα ξέρει το AI
+            # Συλλογή δεδομένων από το Simulator για να τα "μάθει" το AI
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
-            context_data = "ΑΠΟΤΕΛΕΣΜΑΤΑ ΠΟΥ ΕΧΟΥΝ ΗΔΗ ΓΙΝΕΙ ΣΤΟ PORTAL ΜΑΣ:\n"
-            for fm in finished_matches:
-                h_n = TEAMS_MAP[fm['h_id']]['n']
-                a_n = TEAMS_MAP[fm['a_id']]['n']
-                context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
+            context_data = ""
+            if finished_matches:
+                context_data = "ΑΠΟΤΕΛΕΣΜΑΤΑ ΠΟΥ ΕΓΙΝΑΝ ΗΔΗ ΣΤΟ PORTAL:\n"
+                for fm in finished_matches[-15:]: # Στέλνουμε τα τελευταία 15 για να μην γεμίσει η μνήμη
+                    h_n = TEAMS_MAP[fm['h_id']]['n']
+                    a_n = TEAMS_MAP[fm['a_id']]['n']
+                    context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🔍 Πραγματοποιώ Web Search και ανάλυση xG..."):
+                with st.spinner("🤖 Το AI αναλύει την αναμέτρηση..."):
                     
+                    # ΤΟ PROMPT ΠΟΥ ΑΝΑΓΚΑΖΕΙ ΤΟ ΑΙ ΝΑ ΑΠΟΦΑΣΙΣΕΙ ΜΟΝΟ ΤΟΥ
                     advanced_prompt = f"""
-ΣΗΜΕΡΑ ΕΙΝΑΙ {datetime.now().strftime('%d/%m/%Y')}. Το Μουντιάλ 2026 διεξάγεται τώρα.
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought).
+Είσαι ένας elite football analyst και quant modeler. 
+ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 είναι σε πλήρη εξέλιξη.
 
-ΔΕΔΟΜΕΝΑ ΑΠΟ ΤΟ SIMULATOR ΜΑΣ (Προτεραιότητα):
-{context_data if finished_matches else "Δεν υπάρχουν ακόμα αποτελέσματα."}
-
-ΑΓΩΝΑΣ ΠΡΟΣ ΑΝΑΛΥΣΗ: #{match_number} | {h_t} vs {a_t}
+ΑΓΩΝΑΣ ΠΡΟΣ ΑΝΑΛΥΣΗ: Αγώνας #{match_number} | {h_t} vs {a_t}
+{context_data}
 ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
 
-ΟΔΗΓΙΕΣ WEB SEARCH (Υποχρεωτικά):
-1. Βρες τον επίσημο διαιτητή του αγώνα #{match_number} και τον καιρό.
-2. Βρες τα πραγματικά xG των ομάδων από τους τελευταίους τους αγώνες.
-3. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα #{match_number} το 2022, 2018 και 2014.
+ΟΔΗΓΙΕΣ:
+1. Χρησιμοποίησε την εσωτερική σου γνώση για την ποιότητα των ρόστερ των δύο ομάδων το 2026.
+2. Προσομοίωσε τις συνθήκες του αγώνα (καιρός, κρισιμότητα).
+3. Υπολόγισε xG, πιθανό σκορ και κάρτες.
 
-ΑΠΑΝΤΗΣΗ (Ελληνικά):
+ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown):
 ## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-### 🏥 Διαθεσιμότητα & Σημειώσεις
-### 📊 Data & xG Analysis (Βασισμένο στο Simulator & Web Search)
+### 📋 Ανάλυση Προφίλ & Φόρμας
+### 🏥 Κατάσταση Ρόστερ (Εκτίμηση)
+### 📊 Data & xG Analysis (Simulation)
 ### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
 ### 🔮 Quantitative Prediction Model
 | Κατηγορία | Πρόβλεψη | Πιθανότητα |
@@ -386,24 +385,18 @@ with tabs[6]:
 | Ανατροπή | Ναι/Όχι | XX% |
 """
                     try:
-                        # Χρήση του google_search tool ΧΩΡΙΣ models/ prefix για αποφυγή 404
-                        model = genai.GenerativeModel(
-                            model_name="gemini-1.5-flash",
-                            tools=[{"google_search": {}}]
-                        )
+                        # ΑΠΛΗ ΚΛΗΣΗ ΜΟΝΤΕΛΟΥ ΧΩΡΙΣ SEARCH TOOLS
+                        model = genai.GenerativeModel("gemini-1.5-flash")
                         response = model.generate_content(advanced_prompt)
                         
                         st.markdown("---")
-                        st.markdown(response.text)
-                        
-                    except exceptions.ResourceExhausted:
-                        st.error("⚠️ Το Quota εξαντλήθηκε (Σφάλμα 429). Η Google επιτρέπει λίγες αναζητήσεις ανά λεπτό. Περιμένετε 60 δευτερόλεπτα και δοκιμάστε ξανά.")
-                    except Exception as e:
-                        # Fallback αν το search tool αποτύχει
-                        model_simple = genai.GenerativeModel(model_name="gemini-1.5-flash")
-                        response_simple = model_simple.generate_content(advanced_prompt)
-                        st.warning("⚠️ Περιορισμένη πρόσβαση στο Web Search. Η ανάλυση βασίστηκε σε εσωτερικά δεδομένα.")
-                        st.markdown(response_simple.text)
+                        if response.text:
+                            st.markdown(response.text)
+                        else:
+                            st.error("Το AI δεν επέστρεψε κείμενο. Δοκίμασε ξανά.")
+                            
+                    except Exception as ai_err:
+                        st.error(f"Σφάλμα AI: {ai_err}")
 
         except Exception as e:
             st.error(f"❌ Σφάλμα σύνδεσης: {e}")
