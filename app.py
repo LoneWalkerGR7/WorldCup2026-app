@@ -327,7 +327,7 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Advanced Analytical Engine)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Pro Analytical Engine)")
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
@@ -348,69 +348,68 @@ with tabs[6]:
             h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
             a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός, κρισιμότητα αγώνα...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός...")
 
-            # Συλλογή δεδομένων από το Portal για το Context
+            # Συλλογή δεδομένων από το Portal
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
             if finished_matches:
-                context_data = "ΔΕΔΟΜΕΝΑ ΑΠΟ ΤΟ ΔΙΚΟ ΜΟΥ PORTAL (Simulator 2026):\n"
-                for fm in finished_matches[-15:]: # Τελευταία 15 ματς
+                context_data = "ΑΠΟΤΕΛΕΣΜΑΤΑ ΠΟΥ ΕΧΟΥΝ ΗΔΗ ΣΗΜΕΙΩΘΕΙ ΣΤΟ SIMULATOR ΜΑΣ:\n"
+                for fm in finished_matches[-10:]:
                     h_n = TEAMS_MAP[fm['h_id']]['n']
                     a_n = TEAMS_MAP[fm['a_id']]['n']
-                    context_data += f"- Match: {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
+                    context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner(f"📡 Εκτελώ Chain-of-Thought ανάλυση για τον Αγώνα #{match_number}..."):
+                with st.spinner(f"📡 Πραγματοποιώ Web Search για το ιστορικό του Match #{match_number}..."):
                     
-                    # ΤΟ ΑΠΟΛΥΤΟ PROMPT ΓΙΑ ΠΡΟΒΛΕΨΕΙΣ
+                    # ΠΟΛΥ ΠΙΟ ΑΥΣΤΗΡΟ PROMPT ΓΙΑ ΙΣΤΟΡΙΚΗ ΑΚΡΙΒΕΙΑ
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst, data scientist και quant modeler με απόλυτη εξειδίκευση στο Παγκόσμιο Κύπελλο.
-ΣΗΜΕΡΑ ΕΙΝΑΙ 17 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
-Ακολούθησε αυστηρά τη ΜΕΘΟΔΟΛΟΓΙΑ που περιγράφεται παρακάτω — σκέψου βήμα-βήμα (chain-of-thought) πριν βγάλεις οποιαδήποτε πρόβλεψη. Μεταξύ {h_t} εναντίον {a_t}.
+                    Είσαι ένας elite football analyst και ιστορικός του Παγκοσμίου Κυπέλλου. 
+                    ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
 
-Η ανάλυσή σου ΠΡΕΠΕΙ να βασίζεται σε πραγματικά δεδομένα, τα οποία θα επαληθεύσεις και θα αντλήσεις μέσω web search σε πραγματικό χρόνο.
+                    ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση Αγώνα #{match_number}: {h_t} vs {a_t}.
+                    {context_data}
+                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
 
-════════════════════════════════════════
-📌 ΔΕΔΟΜΕΝΑ ΑΓΩΝΑ & ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ
-════════════════════════════════════════
-- Αγώνας #{match_number} | {h_t} vs {a_t} | Μουντιάλ 2026
-- ΣΗΜΕΙΩΣΕΙΣ: {extra_notes if extra_notes else "Καμία πρόσθετη σημείωση."}
-{context_data}
+                    ΥΠΟΧΡΕΩΤΙΚΕΣ ΟΔΗΓΙΕΣ (SEARCH GROUNDING):
+                    1. Χρησιμοποίησε το Google Search για να βρεις ΠΟΙΟΙ ήταν οι επίσημοι αγώνες "Match {match_number}" στις διοργανώσεις:
+                       - FIFA World Cup 2022 (π.χ. Match 25 was Japan-Costa Rica 0-1)
+                       - FIFA World Cup 2018 (π.χ. Match 25 was England-Panama 6-1)
+                       - FIFA World Cup 2014 (π.χ. Match 25 was Colombia-Ivory Coast 2-1)
+                    2. Μην υποθέτεις τη σειρά. Αν δεν βρεις το Match #{match_number}, γράψε "Δεν βρέθηκε ακριβής αντιστοιχία".
+                    3. Βρες τον διαιτητή του σημερινού αγώνα και στατιστικά του (κάρτες/πέναλτι).
+                    4. Υπολόγισε πιθανότητα Ανατροπής, Πέναλτι και Κόκκινης Κάρτας.
 
-🧠 ΒΗΜΑΤΑ ΑΝΑΛΥΣΗΣ
-1. ΔΙΑΙΤΗΤΗΣ & ΣΤΑΤΙΣΤΙΚΑ: Εντόπισε ποιος σφυρίζει. Ανάλυσε τον μέσο όρο για κίτρινες, κόκκινες κάρτες και πέναλτι ανά αγώνα.
-2. ΠΕΡΙΒΑΛΛΟΝ: Καιρός και υγρασία στο γήπεδο διεξαγωγής και πώς επηρεάζει την ένταση.
-3. ΦΟΡΜΑ: xG και αποτελέσματα των ομάδων στο Μουντιάλ 2026 μέχρι τώρα.
-4. ΙΣΤΟΡΙΚΟ: Τι έγινε ιστορικά στον αγώνα με αύξοντα αριθμό #{match_number} (2022, 2018, 2014).
+                    ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown):
+                    ## ⚽ {h_t} vs {a_t} | Ανάλυση Αγώνα #{match_number}
+                    
+                    ### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
+                    
+                    ### 📊 Φόρμα & xG (Βάσει Simulator & Web Data)
 
-ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown):
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026 — Αγώνας #{match_number}
+                    ### 🏟️ ΠΡΑΓΜΑΤΙΚΟ Ιστορικό Slot #{match_number}
+                    | Έτος | Αγώνας | Σκορ | Σημειώσεις |
+                    |------|--------|------|------------|
+                    | 2022 | ... | ... | ... |
+                    | 2018 | ... | ... | ... |
+                    | 2014 | ... | ... | ... |
 
-### 📋 Ταυτότητα Αγώνα: Διαιτητής & Συνθήκες
-(Ανάλυση για Διαιτητή, αναμενόμενες Κίτρινες/Κόκκινες και επίδραση καιρού)
+                    ### 🔮 Quantitative Betting Model
+                    | Κατηγορία | Πρόβλεψη | Πιθανότητα |
+                    |-----------|----------|------------|
+                    | **Αποτέλεσμα (1X2)** | ... | XX% |
+                    | **Ακριβές Σκορ** | X - X | ... |
+                    | **Πέναλτι** | Ναι / Όχι | XX% |
+                    | **Κόκκινη Κάρτα** | Ναι / Όχι | XX% |
+                    | **Κίτρινες (Εύρος)** | π.χ. 4-5 | ... |
+                    | **Ανατροπή (Turnaround)** | Ναι / Όχι | XX% |
 
-### 📊 Στατιστική Ανάλυση & xG
-(Πρόσφατη φόρμα και επιθετική ισχύς)
-
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα | Confidence |
-|-----------|----------|------------|------------|
-| Αποτέλεσμα (1-X-2) | ... | XX% | ... |
-| Ακριβές Σκορ | X-X | XX% | ... |
-| Over/Under 2.5 | ... | XX% | ... |
-| **Πέναλτι στον αγώνα** | **Ναι/Όχι** | **XX%** | ... |
-| **Κόκκινη Κάρτα** | **Ναι/Όχι** | **XX%** | ... |
-| **Σύνολο Κίτρινων** | **Αριθμός** | **XX%** | ... |
-| **Ανατροπή (In-play)**| **Ναι/Όχι** | **XX%** | ... |
-
-> 💡 **Value Bet:** [Πρόταση]
-"""
-
+                    > 💡 **Value Bet:** [Πρόταση]
+                    """
+                    
                     try:
-                        # Κλήση ΜΕ Google Search
+                        # Χρήση του google_search_retrieval με ρητή εντολή για το Match Number
                         model = genai.GenerativeModel(
                             model_name=SELECTED_MODEL,
                             tools=[{"google_search_retrieval": {}}]
@@ -419,10 +418,10 @@ with tabs[6]:
                         st.markdown("---")
                         st.markdown(response.text)
                     except Exception as e:
-                        # Fallback αν το Search αποτύχει
-                        model = genai.GenerativeModel(model_name=SELECTED_MODEL)
-                        response = model.generate_content(advanced_prompt)
-                        st.info("⚠️ Η ανάλυση ολοκληρώθηκε με εσωτερικά δεδομένα (Search Unavailable).")
+                        # Fallback
+                        model_simple = genai.GenerativeModel(model_name=SELECTED_MODEL)
+                        response = model_simple.generate_content(advanced_prompt)
+                        st.info("⚠️ Το Web Search περιορίστηκε. Η ιστορική ανάλυση βασίζεται σε εσωτερική μνήμη.")
                         st.markdown("---")
                         st.markdown(response.text)
                         
