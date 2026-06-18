@@ -327,85 +327,77 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (AI Prediction Engine)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Safe AI Engine)")
     
+    # 1. Αρχικοποίηση Cache στη μνήμη του browser για να μην χρεώνεσαι Requests
+    if 'ai_results_cache' not in st.session_state:
+        st.session_state.ai_results_cache = {}
+
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
-        try:
-            # 1. Ρύθμιση του API
-            genai.configure(api_key=api_key)
-            
-            # 2. ΑΥΤΟΜΑΤΗ ΑΝΙΧΝΕΥΣΗ ΔΙΑΘΕΣΙΜΩΝ ΜΟΝΤΕΛΩΝ (Λύνει το 404)
-            # Ψάχνουμε ποια μοντέλα επιτρέπει η Google στο κλειδί σου αυτή τη στιγμή
-            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            
-            # Επιλογή του καλύτερου διαθέσιμου με σειρά προτεραιότητας
-            if any("gemini-1.5-flash" in m for m in available_models):
-                target_model = [m for m in available_models if "gemini-1.5-flash" in m][0]
-            elif any("gemini-1.5-pro" in m for m in available_models):
-                target_model = [m for m in available_models if "gemini-1.5-pro" in m][0]
-            elif any("gemini-pro" in m for m in available_models):
-                target_model = [m for m in available_models if "gemini-pro" in m][0]
+        # --- UI Εισαγωγής ---
+        c1, c2 = st.columns(2)
+        all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
+        h_t = c1.selectbox("Home Team", all_teams_names, key="ai_h_final")
+        a_t = c2.selectbox("Away Team", all_teams_names, index=1, key="ai_a_final")
+        match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
+        extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
+
+        # Δημιουργία μοναδικού κλειδιού για αυτόν τον συνδυασμό αγώνα
+        cache_id = f"{h_t}_{a_t}_{match_number}"
+
+        if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
+            # Έλεγχος αν έχουμε ήδη το αποτέλεσμα στο Cache
+            if cache_id in st.session_state.ai_results_cache:
+                st.info("📊 Ανάκτηση ανάλυσης από την τοπική μνήμη...")
+                st.markdown("---")
+                st.markdown(st.session_state.ai_results_cache[cache_id])
             else:
-                target_model = available_models[0] if available_models else None
-
-            # --- UI Εισαγωγής ---
-            c1, c2 = st.columns(2)
-            all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
-            h_t = c1.selectbox("Home Team", all_teams_names, key="ai_h_final")
-            a_t = c2.selectbox("Away Team", all_teams_names, index=1, key="ai_a_final")
-            match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
-
-            # Συλλογή δεδομένων Simulator
-            finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
-            context_data = ""
-            if finished_m:
-                context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ PORTAL:\n"
-                for fm in finished_m[-15:]:
-                    h_n = TEAMS_MAP[fm['h_id']]['n']
-                    a_n = TEAMS_MAP[fm['a_id']]['n']
-                    context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
-
-            if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                if not target_model:
-                    st.error("Δεν βρέθηκε διαθέσιμο μοντέλο Gemini στο κλειδί σας.")
-                else:
-                    with st.spinner(f"🤖 Το AI ({target_model}) αναλύει τα δεδομένα..."):
+                try:
+                    with st.spinner("🤖 Σύνδεση με το AI..."):
+                        genai.configure(api_key=api_key)
                         
-                        advanced_prompt = f"""
-                        Είσαι ο κορυφαίος ποδοσφαιρικός αναλυτής. Σήμερα είναι 18 Ιουνίου 2026.
-                        Ανάλυσε τον Αγώνα #{match_number}: {h_t} vs {a_t}.
+                        # Χρήση σταθερού μοντέλου για μείωση των κλήσεων API (RPM)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
+                        # Συλλογή δεδομένων Simulator για Context
+                        finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
+                        context_data = ""
+                        if finished_m:
+                            context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ:\n"
+                            for fm in finished_m[-10:]: # Μόνο τα τελευταία 10 για οικονομία
+                                h_n = TEAMS_MAP[fm['h_id']]['n']
+                                a_n = TEAMS_MAP[fm['a_id']]['n']
+                                context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
+
+                        prompt = f"""
+                        Είσαι ο κορυφαίος αναλυτής Μουντιάλ. Σήμερα είναι 18 Ιουνίου 2026.
+                        Αγώνας: {h_t} vs {a_t} (Match #{match_number}).
                         
                         {context_data}
-                        Σημειώσεις Χρήστη: {extra_notes}
+                        Σημειώσεις: {extra_notes}
                         
-                        Δώσε:
-                        1. Τακτική ανάλυση.
-                        2. Πρόβλεψη xG και Ακριβές Σκορ.
-                        3. Πρόβλεψη για κάρτες και πέναλτι.
+                        Δώσε σύντομη τακτική ανάλυση, xG, ακριβές σκορ και πρόβλεψη για κάρτες.
                         Απάντησε στα Ελληνικά με Markdown.
                         """
 
-                        try:
-                            # Κλήση του μοντέλου που ανιχνεύσαμε
-                            model = genai.GenerativeModel(model_name=target_model)
-                            response = model.generate_content(advanced_prompt)
-                            
+                        response = model.generate_content(prompt)
+                        
+                        if response.text:
+                            # Αποθήκευση στο cache για να μην ξαναχρειαστεί κλήση
+                            st.session_state.ai_results_cache[cache_id] = response.text
                             st.markdown("---")
-                            if response.text:
-                                st.markdown(response.text)
-                            else:
-                                st.error("Κενή απάντηση από το AI.")
-                                
-                        except Exception as e_gen:
-                            # Διαχείριση Quota (429)
-                            if "429" in str(e_gen):
-                                st.error("⚠️ Quota Exceeded: Περιμένετε 60 δευτερόλεπτα.")
-                            else:
-                                st.error(f"Σφάλμα κατά την παραγωγή: {e_gen}")
+                            st.markdown(response.text)
+                        else:
+                            st.error("Το AI δεν έδωσε απάντηση.")
 
-        except Exception as e_init:
-            st.error(f"❌ Αποτυχία σύνδεσης: {e_init}")
-            st.info("Βεβαιωθείτε ότι το GEMINI_API_KEY είναι σωστό.")
+                except Exception as e:
+                    err_msg = str(e)
+                    if "429" in err_msg:
+                        st.error("⚠️ Η Google μπλόκαρε προσωρινά τις κλήσεις (Quota Exceeded).")
+                        st.warning("Μην πατάτε το κουμπί συνεχόμενα. Περιμένετε 2-3 λεπτά και δοκιμάστε ξανά. Το δωρεάν κλειδί επιτρέπει μόνο 2-3 αναλύσεις το λεπτό.")
+                    else:
+                        st.error(f"Σφάλμα AI: {err_msg}")
+    else:
+        st.warning("🚨 Δεν βρέθηκε GEMINI_API_KEY στα Secrets.")
