@@ -329,14 +329,12 @@ with tabs[5]:
 with tabs[6]:
     st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (Safe AI Engine)")
     
-    # 1. Αρχικοποίηση Cache στη μνήμη του browser για να μην χρεώνεσαι Requests
     if 'ai_results_cache' not in st.session_state:
         st.session_state.ai_results_cache = {}
 
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
-        # --- UI Εισαγωγής ---
         c1, c2 = st.columns(2)
         all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
         h_t = c1.selectbox("Home Team", all_teams_names, key="ai_h_final")
@@ -344,60 +342,56 @@ with tabs[6]:
         match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
         extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες...")
 
-        # Δημιουργία μοναδικού κλειδιού για αυτόν τον συνδυασμό αγώνα
         cache_id = f"{h_t}_{a_t}_{match_number}"
 
         if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-            # Έλεγχος αν έχουμε ήδη το αποτέλεσμα στο Cache
             if cache_id in st.session_state.ai_results_cache:
-                st.info("📊 Ανάκτηση ανάλυσης από την τοπική μνήμη...")
+                st.info("📊 Ανάκτηση από cache...")
                 st.markdown("---")
                 st.markdown(st.session_state.ai_results_cache[cache_id])
             else:
                 try:
                     with st.spinner("🤖 Σύνδεση με το AI..."):
-                        genai.configure(api_key=api_key)
-                        
-                        # Χρήση σταθερού μοντέλου για μείωση των κλήσεων API (RPM)
-                        model = genai.GenerativeModel('gemini-2.0-flash')
-                        
-                        # Συλλογή δεδομένων Simulator για Context
                         finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
                         context_data = ""
                         if finished_m:
                             context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ:\n"
-                            for fm in finished_m[-10:]: # Μόνο τα τελευταία 10 για οικονομία
+                            for fm in finished_m[-10:]:
                                 h_n = TEAMS_MAP[fm['h_id']]['n']
                                 a_n = TEAMS_MAP[fm['a_id']]['n']
                                 context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
-                        prompt = f"""
-                        Είσαι ο κορυφαίος αναλυτής Μουντιάλ. Σήμερα είναι 18 Ιουνίου 2026.
-                        Αγώνας: {h_t} vs {a_t} (Match #{match_number}).
-                        
-                        {context_data}
-                        Σημειώσεις: {extra_notes}
-                        
-                        Δώσε σύντομη τακτική ανάλυση, xG, ακριβές σκορ και πρόβλεψη για κάρτες.
-                        Απάντησε στα Ελληνικά με Markdown.
-                        """
+                        prompt = f"""Είσαι ο κορυφαίος αναλυτής Μουντιάλ. Σήμερα είναι 18 Ιουνίου 2026.
+Αγώνας: {h_t} vs {a_t} (Match #{match_number}).
 
-                        response = model.generate_content(prompt)
+{context_data}
+Σημειώσεις: {extra_notes}
+
+Δώσε σύντομη τακτική ανάλυση, xG, ακριβές σκορ και πρόβλεψη για κάρτες.
+Απάντησε στα Ελληνικά με Markdown."""
+
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
                         
-                        if response.text:
-                            # Αποθήκευση στο cache για να μην ξαναχρειαστεί κλήση
-                            st.session_state.ai_results_cache[cache_id] = response.text
+                        payload = {
+                            "contents": [{"parts": [{"text": prompt}]}],
+                            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}
+                        }
+                        
+                        import requests as req
+                        response = req.post(url, json=payload, timeout=30)
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            result_text = data['candidates'][0]['content']['parts'][0]['text']
+                            st.session_state.ai_results_cache[cache_id] = result_text
                             st.markdown("---")
-                            st.markdown(response.text)
+                            st.markdown(result_text)
+                        elif response.status_code == 429:
+                            st.error("⚠️ Quota Exceeded. Περίμενε 1 λεπτό και ξαναπάτα.")
                         else:
-                            st.error("Το AI δεν έδωσε απάντηση.")
+                            st.error(f"API Error {response.status_code}: {response.text}")
 
                 except Exception as e:
-                    err_msg = str(e)
-                    if "429" in err_msg:
-                        st.error("⚠️ Η Google μπλόκαρε προσωρινά τις κλήσεις (Quota Exceeded).")
-                        st.warning("Μην πατάτε το κουμπί συνεχόμενα. Περιμένετε 2-3 λεπτά και δοκιμάστε ξανά. Το δωρεάν κλειδί επιτρέπει μόνο 2-3 αναλύσεις το λεπτό.")
-                    else:
-                        st.error(f"Σφάλμα AI: {err_msg}")
+                    st.error(f"Σφάλμα: {str(e)}")
     else:
         st.warning("🚨 Δεν βρέθηκε GEMINI_API_KEY στα Secrets.")
