@@ -359,7 +359,7 @@ with tabs[6]:
                         genai.configure(api_key=api_key)
                         
                         # Χρήση σταθερού μοντέλου για μείωση των κλήσεων API (RPM)
-                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        model = genai.GenerativeModel('gemini-2.0-flash')
                         
                         # Συλλογή δεδομένων Simulator για Context
                         finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
