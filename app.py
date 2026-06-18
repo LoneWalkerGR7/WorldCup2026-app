@@ -327,65 +327,74 @@ with tabs[5]:
             st.markdown(f"""<div class="score-box {st_class}">{t_type}<br><span style='font-size:9px'>{'✅' if count > 0 else '⏳'} {count if count > 0 else ''}</span></div>""", unsafe_allow_html=True)
 
 with tabs[6]:
-    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (AI Simulation Engine)")
+    st.markdown("### 🔮 Ο ΚΟΝΤΟΣ ΠΡΟΤΕΙΝΕΙ (AI Prediction Engine)")
+    
     api_key = st.secrets.get("GEMINI_API_KEY")
     
     if api_key:
         try:
-            # Ρύθμιση του API μια φορά στην αρχή
+            # Ρύθμιση AI
             genai.configure(api_key=api_key)
             
             c1, c2 = st.columns(2)
-            home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
-            h_t = c1.selectbox("Home Team", home_list, key="ai_h_final")
-            a_t = c2.selectbox("Away Team", home_list, index=1, key="ai_a_final")
+            # Παίρνουμε τα ονόματα των ομάδων από το TEAMS_MAP
+            all_teams_names = sorted([d['n'] for d in TEAMS_MAP.values()])
+            
+            h_t = c1.selectbox("Home Team", all_teams_names, key="ai_h_final")
+            a_t = c2.selectbox("Away Team", all_teams_names, index=1, key="ai_a_final")
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
-            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, απουσίες, ρεπορτάζ...")
+            extra_notes = st.text_area("🗒️ Σημειώσεις τελευταίας στιγμής:", placeholder="Π.χ. Βρέχει, λείπει ο αρχηγός, κρισιμότητα αγώνα...")
 
-            # Συλλογή δεδομένων από το Simulator για να τα "μάθει" το AI
-            finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
+            # --- ΣΥΛΛΟΓΗ ΔΕΔΟΜΕΝΩΝ ΑΠΟ ΤΟ SIMULATOR ΓΙΑ ΤΟ AI ---
+            # Φτιάχνουμε ένα κείμενο με τα τελευταία αποτελέσματα που έβγαλε ο χρήστης στο portal
+            finished_m = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
-            if finished_matches:
-                context_data = "ΑΠΟΤΕΛΕΣΜΑΤΑ ΠΟΥ ΕΓΙΝΑΝ ΗΔΗ ΣΤΟ PORTAL:\n"
-                for fm in finished_matches[-15:]: # Στέλνουμε τα τελευταία 15 για να μην γεμίσει η μνήμη
+            if finished_m:
+                context_data = "ΠΡΟΗΓΟΥΜΕΝΑ ΑΠΟΤΕΛΕΣΜΑΤΑ ΣΤΟ ΤΟΥΡΝΟΥΑ:\n"
+                for fm in finished_m[-15:]: # Τελευταία 15 ματς για context
                     h_n = TEAMS_MAP[fm['h_id']]['n']
                     a_n = TEAMS_MAP[fm['a_id']]['n']
                     context_data += f"- {h_n} {fm['sh']}-{fm['sa']} {a_n}\n"
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
-                with st.spinner("🤖 Το AI αναλύει την αναμέτρηση..."):
+                with st.spinner("🤖 Το AI επεξεργάζεται τα δεδομένα..."):
                     
-                    # ΤΟ PROMPT ΠΟΥ ΑΝΑΓΚΑΖΕΙ ΤΟ ΑΙ ΝΑ ΑΠΟΦΑΣΙΣΕΙ ΜΟΝΟ ΤΟΥ
+                    # ΤΟ PROMPT (ΧΩΡΙΣ GOOGLE SEARCH - ΜΟΝΟ AI LOGIC)
                     advanced_prompt = f"""
-Είσαι ένας elite football analyst και quant modeler. 
-ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 είναι σε πλήρη εξέλιξη.
+                    Είσαι ο κορυφαίος ποδοσφαιρικός αναλυτής στον κόσμο, ειδικός στα Παγκόσμια Κύπελλα.
+                    ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 βρίσκεται σε εξέλιξη.
+                    
+                    ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση του Αγώνα #{match_number} | {h_t} vs {a_t}
+                    
+                    {context_data}
+                    
+                    ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes if extra_notes else "Καμία."}
+                    
+                    ΟΔΗΓΙΕΣ:
+                    1. Βασίσου στην τεράστια γνώση σου για την ποιότητα των παικτών αυτών των εθνικών ομάδων.
+                    2. Λάβε υπόψη τα αποτελέσματα που σου έδωσα παραπάνω (αν υπάρχουν) για να δεις τη φόρμα τους στο τρέχον Μουντιάλ.
+                    3. Κάνε μια επαγγελματική πρόβλεψη για xG, τελικό σκορ και κάρτες.
+                    
+                    ΑΠΟΔΟΣΗ ΣΤΑ ΕΛΛΗΝΙΚΑ (Markdown):
+                    ## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026
+                    ### 📊 Ανάλυση Αναμέτρησης
+                    (Ανάλυσε τακτική, ρόστερ και τη φόρμα τους)
+                    
+                    ### 🔮 Πρόβλεψη & Πιθανότητες
+                    | Κατηγορία | Πρόβλεψη | Πιθανότητα |
+                    |-----------|----------|------------|
+                    | Αποτέλεσμα (1-X-2) | ... | XX% |
+                    | Ακριβές Σκορ | X-X | ... |
+                    | Over 2.5 | Ναι/Όχι | XX% |
+                    | Κάρτες | Over/Under | XX% |
+                    | Πέναλτι | Ναι/Όχι | XX% |
+                    
+                    ### 🎯 Value Bet
+                    (Πρότεινε το πιο δυνατό σημείο για στοιχηματισμό)
+                    """
 
-ΑΓΩΝΑΣ ΠΡΟΣ ΑΝΑΛΥΣΗ: Αγώνας #{match_number} | {h_t} vs {a_t}
-{context_data}
-ΣΗΜΕΙΩΣΕΙΣ ΧΡΗΣΤΗ: {extra_notes}
-
-ΟΔΗΓΙΕΣ:
-1. Χρησιμοποίησε την εσωτερική σου γνώση για την ποιότητα των ρόστερ των δύο ομάδων το 2026.
-2. Προσομοίωσε τις συνθήκες του αγώνα (καιρός, κρισιμότητα).
-3. Υπολόγισε xG, πιθανό σκορ και κάρτες.
-
-ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown):
-## ⚽ {h_t} vs {a_t} | Μουντιάλ 2026
-### 📋 Ανάλυση Προφίλ & Φόρμας
-### 🏥 Κατάσταση Ρόστερ (Εκτίμηση)
-### 📊 Data & xG Analysis (Simulation)
-### 🏟️ Ιστορικό Μοτίβο Αγώνα #{match_number}
-### 🔮 Quantitative Prediction Model
-| Κατηγορία | Πρόβλεψη | Πιθανότητα |
-|-----------|----------|------------|
-| 1-X-2 | ... | XX% |
-| Σκορ | X-X | — |
-| Πέναλτι | Ναι/Όχι | XX% |
-| Κόκκινη | Ναι/Όχι | XX% |
-| Ανατροπή | Ναι/Όχι | XX% |
-"""
                     try:
-                        # ΑΠΛΗ ΚΛΗΣΗ ΜΟΝΤΕΛΟΥ ΧΩΡΙΣ SEARCH TOOLS
+                        # Χρησιμοποιούμε το στάνταρ όνομα χωρίς το "models/" πρόθεμα
                         model = genai.GenerativeModel("gemini-1.5-flash")
                         response = model.generate_content(advanced_prompt)
                         
@@ -393,10 +402,14 @@ with tabs[6]:
                         if response.text:
                             st.markdown(response.text)
                         else:
-                            st.error("Το AI δεν επέστρεψε κείμενο. Δοκίμασε ξανά.")
+                            st.error("Το AI δεν επέστρεψε κείμενο. Δοκιμάστε ξανά.")
                             
-                    except Exception as ai_err:
-                        st.error(f"Σφάλμα AI: {ai_err}")
+                    except Exception as e_ai:
+                        # Αν υπάρχει σφάλμα Quota (429), το πιάνουμε εδώ
+                        if "429" in str(e_ai):
+                            st.error("⚠️ Το API Quota εξαντλήθηκε. Περιμένετε 60 δευτερόλεπτα και δοκιμάστε ξανά.")
+                        else:
+                            st.error(f"Σφάλμα AI: {e_ai}")
 
         except Exception as e:
-            st.error(f"❌ Σφάλμα σύνδεσης: {e}")
+            st.error(f"❌ Σφάλμα Σύνδεσης: {e}")
