@@ -120,24 +120,41 @@ RAW_MATCHES = [
     ["G", "27/06 06:00", "Lumen Field", "26", "27"], ["G", "27/06 06:00", "BC Place", "28", "25"],
     ["L", "28/06 12:00", "MetLife", "48", "45"], ["L", "28/06 12:00", "Lincoln Field", "46", "47"],
     ["K", "28/06 02:30", "Hard Rock Stadium", "44", "41"], ["K", "28/06 02:30", "Mercedes-Benz", "42", "43"],
-    ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"]
+    ["J", "28/06 05:00", "Arrowhead", "38", "39"], ["J", "28/06 05:00", "AT&T Stadium", "40", "37"],
+    # --- ΦΑΣΗ ΤΩΝ 32 (1/16) ---
+    ["1/16", "28/06 22:00", "Hard Rock", "2", "5"], ["1/16", "29/06 20:00", "MetLife", "9", "22"],
+    ["1/16", "29/06 23:30", "Gillette", "17", "14"], ["1/16", "30/06 04:00", "Lincoln Field", "21", "10"],
+    ["1/16", "30/06 20:00", "BMO Field", "19", "36"], ["1/16", "01/07 00:00", "Mercedes-Benz", "33", "23"],
+    ["1/16", "01/07 04:00", "NRG Stadium", "1", "20"], ["1/16", "01/07 19:00", "AT&T Stadium", "45", "42"],
+    ["1/16", "01/07 23:00", "Lumen Field", "25", "34"], ["1/16", "02/07 03:00", "SoFi Stadium", "13", "6"],
+    ["1/16", "02/07 22:00", "Hard Rock", "29", "39"], ["1/16", "03/07 02:00", "BC Place", "41", "46"],
+    ["1/16", "03/07 06:00", "Levi's Stadium", "8", "38"], ["1/16", "03/07 21:00", "Arrowhead", "15", "26"],
+    ["1/16", "04/07 01:00", "MetLife Stadium", "37", "30"], ["1/16", "04/07 04:30", "BMO Field", "44", "47"]
 ]
 
 # --- 4. SESSION STATE ---
 def init_session():
     data = load_from_db()
+    
+    # Δημιουργία της πλήρους λίστας αγώνων από το RAW_MATCHES
+    full_match_list = []
+    for i, m_data in enumerate(RAW_MATCHES):
+        full_match_list.append({
+            "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
+            "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
+            "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
+            "ref": "TBD", "turn": "Καμία", "htft": "TBD"
+        })
+
     if data and len(data) > 0:
+        # Αν έχουμε δεδομένα, συγχρονίζουμε: Κρατάμε τα παλιά και προσθέτουμε τα νέα
+        existing_ids = {m['id'] for m in data}
+        for fm in full_match_list:
+            if fm['id'] not in existing_ids:
+                data.append(fm)
         st.session_state.wc_matches = data
     else:
-        matches = []
-        for i, m_data in enumerate(RAW_MATCHES):
-            matches.append({
-                "id": i+1, "group": m_data[0], "dt": m_data[1], "st": m_data[2],
-                "h_id": m_data[3], "a_id": m_data[4], "sh": None, "sa": None, "fin": False,
-                "y_h": 0, "y_a": 0, "r_h": 0, "r_a": 0, "p_h": 0, "p_a": 0, "og_h": 0, "og_a": 0,
-                "ref": "TBD", "turn": "Καμία", "htft": "TBD"
-            })
-        st.session_state.wc_matches = matches
+        st.session_state.wc_matches = full_match_list
 
 if 'wc_matches' not in st.session_state:
     init_session()
@@ -166,6 +183,12 @@ def reset_all_tournament():
     st.cache_data.clear()
     st.rerun()
 
+@st.cache_data(ttl=3600)
+def Μετράω_τα_κουκιά(model_id, prompt):
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(model_id)
+    return model.generate_content(prompt).text
+
 # --- 6. HEADER & DASHBOARD ---
 st.markdown("<h1>🏆 MUNDIAL 2026 PRO STATS PORTAL</h1>", unsafe_allow_html=True)
 fin_m = [m for m in st.session_state.wc_matches if m.get('fin')]
@@ -175,7 +198,7 @@ total_p = sum(m.get('p_h',0) + m.get('p_a',0) for m in fin_m)
 total_og = sum(m.get('og_h',0) + m.get('og_a',0) for m in fin_m)
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
-with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/72</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
+with c1: st.markdown(f'<div class="stat-card"><div class="stat-val">{len(fin_m)}/{len(st.session_state.wc_matches)}</div><div class="stat-label">Matches</div></div>', unsafe_allow_html=True)
 with c2: st.markdown(f'<div class="stat-card"><div class="stat-val">{sum(m.get("sh",0)+m.get("sa",0) for m in fin_m if m.get("sh") is not None)}</div><div class="stat-label">⚽Goals</div></div>', unsafe_allow_html=True)
 with c3: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#facc15!important">{total_y}</div><div class="stat-label">🟨Yellow</div></div>', unsafe_allow_html=True)
 with c4: st.markdown(f'<div class="stat-card"><div class="stat-val" style="color:#ef4444!important">{total_r}</div><div class="stat-label">🟥Red</div></div>', unsafe_allow_html=True)
@@ -195,9 +218,11 @@ with tabs[0]:
         h = TEAMS_MAP.get(m['h_id'], {"n": "N/A", "img": ""})
         a = TEAMS_MAP.get(m['a_id'], {"n": "N/A", "img": ""})
         with cols[idx % 3]:
+            # Χρώμα για διαχωρισμό ομίλων από νοκ-άουτ
+            tag_color = "#22d3ee" if len(m['group']) == 1 else "#ef4444"
             st.markdown(f"""<div class="match-card">
                 <div style="display:flex; justify-content: space-between; margin-bottom:5px;">
-                    <span class="group-tag">GROUP {m['group']}</span>
+                    <span class="group-tag" style="color:{tag_color}!important; border:1px solid {tag_color}">STAGE {m['group']}</span>
                     <span style="font-size:10px; color:#94a3b8;">🕒 {m['dt']}</span>
                 </div>
                 <div style="display:flex; justify-content: space-around; align-items:center;">
@@ -244,7 +269,7 @@ with tabs[1]:
                 team = TEAMS_MAP[tid]
                 pts, gd, y, r = 0, 0, 0, 0
                 for m in st.session_state.wc_matches:
-                    if m.get('fin') and (m.get('h_id') == tid or m.get('a_id') == tid):
+                    if m.get('fin') and m.get('group') == gId and (m.get('h_id') == tid or m.get('a_id') == tid):
                         is_h = m.get('h_id') == tid
                         h_s, a_s = (m.get('sh',0), m.get('sa',0)) if is_h else (m.get('sa',0), m.get('sh',0))
                         y += m.get('y_h',0) if is_h else m.get('y_a',0)
@@ -278,7 +303,7 @@ with tabs[2]:
             res_col = "#10b981" if m.get('fin') else "#1e293b"
             h_n = TEAMS_MAP[m.get('h_id')]['n']; a_n = TEAMS_MAP[m.get('a_id')]['n']
             st.markdown(f"""<div class="match-card" style="border-top:4px solid {res_col}">
-            <b>Αγώνας {idx+1}</b><br>{h_n} {m.get('sh') if m.get('sh') is not None else ''} - {m.get('sa') if m.get('sa') is not None else ''} {a_n}
+            <b>Αγώνας {idx+1} ({m['group']})</b><br>{h_n} {m.get('sh') if m.get('sh') is not None else ''} - {m.get('sa') if m.get('sa') is not None else ''} {a_n}
             </div>""", unsafe_allow_html=True)
 
 with tabs[3]:
@@ -317,9 +342,9 @@ with tabs[4]:
 
 with tabs[5]:
     st.markdown("### 🌓 Στατιστικά Ημιχρόνων / Τελικών")
-    htft_types = ["1/1", "1/X", "X/1", "X/X", "X/2", "2/X", "2/2"]
+    htft_types = ["1/1", "1/X", "1/2", "X/1", "X/X", "X/2", "2/1", "2/X", "2/2"]
     all_htft = [m.get('htft','TBD') for m in st.session_state.wc_matches if m.get('fin') and m.get('htft','TBD') in htft_types]
-    cols_htft = st.columns(7)
+    cols_htft = st.columns(len(htft_types))
     for idx, t_type in enumerate(htft_types):
         with cols_htft[idx]:
             count = all_htft.count(t_type)
@@ -333,15 +358,10 @@ with tabs[6]:
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            
-            # --- ΔΥΝΑΜΙΚΗ ΕΠΙΛΟΓΗ ΜΟΝΤΕΛΟΥ ---
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            if 'models/gemini-1.5-flash' in available_models:
-                SELECTED_MODEL = 'models/gemini-1.5-flash'
-            elif 'models/gemini-1.5-pro' in available_models:
-                SELECTED_MODEL = 'models/gemini-1.5-pro'
-            else:
-                SELECTED_MODEL = available_models[0]
+            if 'models/gemini-1.5-flash' in available_models: SELECTED_MODEL = 'models/gemini-1.5-flash'
+            elif 'models/gemini-1.5-pro' in available_models: SELECTED_MODEL = 'models/gemini-1.5-pro'
+            else: SELECTED_MODEL = available_models[0]
 
             c1, c2 = st.columns(2)
             home_list = sorted([d['n'] for d in TEAMS_MAP.values()])
@@ -350,7 +370,6 @@ with tabs[6]:
             match_number = st.number_input("Νούμερο Αγώνα (1-104):", 1, 104, 1, key="match_no_final")
             extra_notes = st.text_area("🗒️ Σημειώσεις (καιρός, ρεπορτάζ):", placeholder="Π.χ. Βρέχει καταρρακτωδώς, λείπει ο αρχηγός...")
 
-            # Συλλογή δεδομένων από το Portal
             finished_matches = [m for m in st.session_state.wc_matches if m.get('fin')]
             context_data = ""
             if finished_matches:
@@ -362,11 +381,9 @@ with tabs[6]:
 
             if st.button("ΠΑΤΑ ΝΑ ΠΛΗΡΩΘΕΙΣ", type="primary", key="btn_final"):
                 with st.spinner(f"📡 Πραγματοποιώ Web Search για το ιστορικό του Match #{match_number}..."):
-                    
-                    # ΠΟΛΥ ΠΙΟ ΑΥΣΤΗΡΟ PROMPT ΓΙΑ ΙΣΤΟΡΙΚΗ ΑΚΡΙΒΕΙΑ
                     advanced_prompt = f"""
                     Είσαι ένας elite football analyst και ιστορικός του Παγκοσμίου Κυπέλλου. 
-                    ΣΗΜΕΡΑ ΕΙΝΑΙ 18 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 διεξάγεται τώρα.
+                    ΣΗΜΕΡΑ ΕΙΝΑΙ 28 ΙΟΥΝΙΟΥ 2026. Το Μουντιάλ 2026 βρίσκεται στη φάση των 32.
 
                     ΑΝΤΙΚΕΙΜΕΝΟ: Ανάλυση Αγώνα #{match_number}: {h_t} vs {a_t}.
                     {context_data}
@@ -375,55 +392,23 @@ with tabs[6]:
                     ΥΠΟΧΡΕΩΤΙΚΕΣ ΟΔΗΓΙΕΣ (SEARCH GROUNDING):
                     1. Χρησιμοποίησε το Google Search για να βρεις ΠΟΙΟΙ ήταν οι επίσημοι αγώνες "Match {match_number}" στις διοργανώσεις:
                        - FIFA World Cup 2022 (π.χ. Match 25 was Japan-Costa Rica 0-1)
-                       - FIFA World Cup 2018 (π.χ. Match 25 was England-Panama 6-1)
-                       - FIFA World Cup 2014 (π.χ. Match 25 was Colombia-Ivory Coast 2-1)
-                    2. Μην υποθέτεις τη σειρά. Αν δεν βρεις το Match #{match_number}, γράψε "Δεν βρέθηκε ακριβής αντιστοιχία".
-                    3. Βρες τον διαιτητή του σημερινού αγώνα και στατιστικά του (κάρτες/πέναλτι).
-                    4. Υπολόγισε πιθανότητα Ανατροπής, Πέναλτι και Κόκκινης Κάρτας.
+                       - FIFA World Cup 2018
+                       - FIFA World Cup 2014
+                    2. Βρες τον διαιτητή του σημερινού αγώνα και στατιστικά του (κάρτες/πέναλτι).
+                    3. Υπολόγισε πιθανότητα Ανατροπής, Πέναλτι και Κόκκινης Κάρτας.
 
-                    ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown):
-                    ## ⚽ {h_t} vs {a_t} | Ανάλυση Αγώνα #{match_number}
-                    
-                    ### 📋 Ταυτότητα Αγώνα: Διαιτητής & Καιρός
-                    
-                    ### 📊 Φόρμα & xG (Βάσει Simulator & Web Data)
-
-                    ### 🏟️ ΠΡΑΓΜΑΤΙΚΟ Ιστορικό Slot #{match_number}
-                    | Έτος | Αγώνας | Σκορ | Σημειώσεις |
-                    |------|--------|------|------------|
-                    | 2022 | ... | ... | ... |
-                    | 2018 | ... | ... | ... |
-                    | 2014 | ... | ... | ... |
-
-                    ### 🔮 Quantitative Betting Model
-                    | Κατηγορία | Πρόβλεψη | Πιθανότητα |
-                    |-----------|----------|------------|
-                    | **Αποτέλεσμα (1X2)** | ... | XX% |
-                    | **Ακριβές Σκορ** | X - X | ... |
-                    | **Πέναλτι** | Ναι / Όχι | XX% |
-                    | **Κόκκινη Κάρτα** | Ναι / Όχι | XX% |
-                    | **Κίτρινες (Εύρος)** | π.χ. 4-5 | ... |
-                    | **Ανατροπή (Turnaround)** | Ναι / Όχι | XX% |
-
-                    > 💡 **Value Bet:** [Πρόταση]
+                    ΑΠΑΝΤΗΣΗ (Ελληνικά, Markdown).
                     """
-                    
                     try:
-                        # Χρήση του google_search_retrieval με ρητή εντολή για το Match Number
-                        model = genai.GenerativeModel(
-                            model_name=SELECTED_MODEL,
-                            tools=[{"google_search_retrieval": {}}]
-                        )
+                        model = genai.GenerativeModel(model_name=SELECTED_MODEL, tools=[{"google_search_retrieval": {}}])
                         response = model.generate_content(advanced_prompt)
                         st.markdown("---")
                         st.markdown(response.text)
                     except Exception as e:
-                        # Fallback
                         model_simple = genai.GenerativeModel(model_name=SELECTED_MODEL)
                         response = model_simple.generate_content(advanced_prompt)
-                        st.info("⚠️ Το Web Search περιορίστηκε. Η ιστορική ανάλυση βασίζεται σε εσωτερική μνήμη.")
+                        st.info("⚠️ Το Web Search περιορίστηκε. Η ανάλυση βασίζεται σε εσωτερική μνήμη.")
                         st.markdown("---")
                         st.markdown(response.text)
-                        
         except Exception as e: 
             st.error(f"❌ Σφάλμα: {e}")
